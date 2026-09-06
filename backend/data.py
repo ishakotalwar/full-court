@@ -15,8 +15,13 @@ CANDIDATE_METRICS = [
     "ts_pct", "usg_pct", "ortg", "drtg",
     "pts", "ast", "reb", "stl", "blk", "tov",
     "fg_pct", "three_pct", "ft_pct", "per", "bpm",
+    # Defense, from the play-by-play detail in `data/defense_<league>.parquet`.
+    # The box score only ever offered steals and blocks per game, which is why
+    # every defensive question on this site used to end in the same two
+    # columns. These are rates against possessions actually defended.
+    "blk_100", "blk_rim_100", "stl_100", "foul_100", "on_def_rtg",
 ]
-INVERT_METRICS = {"drtg", "tov"}
+INVERT_METRICS = {"drtg", "tov", "foul_100", "on_def_rtg"}
 
 # Counting stats, which mean different things at different rates. Everything
 # else in the table is already a rate (`fg_pct`) or a total (`gp`), and is left
@@ -110,14 +115,79 @@ def _with_season_str(df: pd.DataFrame) -> pd.DataFrame:
     return df
 
 
+# Counts from the defensive feed, and what they are worth stating as. Each is
+# per 100 possessions the player actually defended, which is the denominator
+# minutes cannot give you: two players can log the same minutes against very
+# different numbers of possessions.
+DEFENSE_RATES = {
+    "blk_100": "blocks",
+    "blk_rim_100": "blocks_rim",
+    "stl_100": "steals",
+    "foul_100": "fouls",
+}
+
+
+@lru_cache(maxsize=8)
+def defense(league: League = DEFAULT) -> pd.DataFrame | None:
+    """Play-by-play defensive detail per player-season, or None where the file
+    has not been built — see `etl/pbp_defense_etl.py`."""
+    try:
+        return _with_season_str(_load("defense", league))
+    except FileNotFoundError:
+        return None
+
+
 @lru_cache(maxsize=8)
 def players(league: League = DEFAULT) -> pd.DataFrame:
-    return _with_season_str(_load("players", league))
+    rows = _with_season_str(_load("players", league))
+    return _with_defense(rows, league)
+
+
+def _with_defense(rows: pd.DataFrame, league: League) -> pd.DataFrame:
+    """Join the defensive rates on, where they exist.
+
+    Left join and no filtering: a player-season the defensive feed does not
+    carry keeps every column it already had and gets nulls here, so nothing
+    on the site narrows just because this file is present.
+    """
+    detail = defense(league)
+    if detail is None or detail.empty:
+        return rows
+
+    keep = ["season", "player_id", "def_poss", "on_def_rtg",
+            *DEFENSE_RATES.values()]
+    have = [c for c in keep if c in detail.columns]
+    sub = detail[have].drop_duplicates(["season", "player_id"]).copy()
+
+    poss = pd.to_numeric(sub.get("def_poss"), errors="coerce")
+    for rate, source in DEFENSE_RATES.items():
+        if source in sub.columns:
+            sub[rate] = (100 * pd.to_numeric(sub[source], errors="coerce")
+                         / poss.where(poss > 0)).round(2)
+    sub = sub.drop(columns=[c for c in DEFENSE_RATES.values() if c in sub.columns])
+
+    return rows.merge(sub, on=["season", "player_id"], how="left")
 
 
 @lru_cache(maxsize=8)
 def teams(league: League = DEFAULT) -> pd.DataFrame:
     return _with_season_str(_load("teams", league))
+
+
+@lru_cache(maxsize=8)
+def starts(league: League = DEFAULT) -> pd.DataFrame | None:
+    """Games started per player-season, or None where the file has not been
+    built — see `etl/starts_etl.py`.
+
+    Nothing reads this since the award boards came out. It is kept because the
+    box-score feed does not carry games started and this is the only place the
+    project has them, so anything that later needs to tell a starter from a
+    reserve has somewhere to look.
+    """
+    try:
+        return _with_season_str(_load("starts", league))
+    except FileNotFoundError:
+        return None
 
 
 @lru_cache(maxsize=8)

@@ -36,10 +36,15 @@ python etl/sdv_etl.py --league wnba
 python etl/schedule_etl.py
 python etl/lineup_etl.py --league nba
 python etl/lineup_etl.py --league wnba
+python etl/starts_etl.py --league nba
+python etl/starts_etl.py --league wnba
+python etl/pbp_defense_etl.py --league nba
+python etl/pbp_defense_etl.py --league wnba
 cd frontend && npm install && cd ..
 
 uvicorn backend.main:app --reload --port 8000   # one terminal
 cd frontend && npm run dev                      # another, opens :5173
 ```
 
-Data is ESPN's via hoopR and wehoop, committed as Parquet in `data/`.
+Data is ESPN's via hoopR and wehoop, committed as Parquet in `data/`. The
+per-possession defensive detail comes from [pbpstats](https://www.pbpstats.com).

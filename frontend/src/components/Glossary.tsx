@@ -52,6 +52,22 @@ const GLOSSARY: Section[] = [
         points: ["Field goal percentage with a three counted as one and a half twos."],
       },
       {
+        term: "Blocks, steals and fouls per 100",
+        points: [
+          "Rated against possessions the player actually defended, not against minutes.",
+          "Two players can log the same minutes against very different numbers of possessions.",
+          "Rim blocks are counted separately, so shot-blocking at the basket is not hidden inside a single blocks number.",
+          "Fouls per 100 is the cost of defending; fewer is better.",
+        ],
+      },
+      {
+        term: "On-court defensive rating",
+        points: [
+          "Points the team allowed per 100 possessions while this player was on the floor.",
+          "Unadjusted — it carries the other four with it.",
+        ],
+      },
+      {
         term: "TOV% · ORB% · FT rate",
         points: [
           "Turnovers per possession.",
@@ -222,32 +238,6 @@ const GLOSSARY: Section[] = [
         points: [
           "How close two player-seasons are across a weighted set of stats.",
           "Scores cluster in the high 90s, so trust the order rather than the number.",
-        ],
-      },
-    ],
-  },
-  {
-    heading: "Conventions",
-    terms: [
-      {
-        term: "Season labels",
-        points: [
-          "NBA seasons are labeled by the year they end, WNBA seasons by their own year.",
-          "2024 means 2023-24 in one and 2024 in the other.",
-        ],
-      },
-      {
-        term: "Percentile",
-        points: [
-          "Where a player sits among everyone who cleared the same qualifying bar on the same page.",
-          "Change the bar and the percentiles move with it.",
-        ],
-      },
-      {
-        term: "Data source",
-        points: [
-          "ESPN, via hoopR for the NBA and wehoop for the WNBA, from 2003 on.",
-          "Impact metrics and lineups start later, where the substitution feed gets dense enough to rebuild a five from.",
         ],
       },
     ],

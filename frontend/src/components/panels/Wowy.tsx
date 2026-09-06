@@ -66,10 +66,6 @@ export function Wowy({ meta }: { meta: Meta }) {
     () => picked.map((id) => roster.find((p: any) => p.player_id === id)).filter(Boolean),
     [picked.join(","), roster]
   );
-  const surname = (name: string) => {
-    const [, ...rest] = name.trim().split(/\s+/);
-    return rest.join(" ") || name;
-  };
   const rows = data?.rows ?? [];
   const total = data?.team_total;
   const max = data?.max_players ?? 4;
@@ -243,20 +239,31 @@ export function Wowy({ meta }: { meta: Meta }) {
                   <thead>
                     <tr className="text-left text-xs uppercase tracking-wider text-mute">
                       {chosen.length > 1 ? (
+                        // A face, not a surname: four names across is wider
+                        // than the card, and the squad above has just put the
+                        // same faces beside the same names.
                         chosen.map((p: any) => (
                           <th
                             key={p.player_id}
                             title={p.name}
-                            className="whitespace-nowrap px-2 py-2 text-center font-medium"
+                            className="px-1 py-2 text-center font-medium"
                           >
-                            {surname(p.name)}
+                            <span className="inline-flex">
+                              <Avatar
+                                name={p.name}
+                                id={p.player_id}
+                                league={meta.league}
+                                size={22}
+                              />
+                            </span>
+                            <span className="sr-only">{p.name}</span>
                           </th>
                         ))
                       ) : (
-                        <th className="px-4 py-2 font-medium">Floor time</th>
+                        <th className="px-3 py-2 font-medium">Floor time</th>
                       )}
                       {COLS.map((c) => (
-                        <th key={c.key} title={c.title} className="px-3 py-2 text-right font-medium">
+                        <th key={c.key} title={c.title} className="px-2 py-2 text-right font-medium">
                           {c.label}
                         </th>
                       ))}
@@ -273,7 +280,7 @@ export function Wowy({ meta }: { meta: Meta }) {
                                 key={p.player_id}
                                 title={`${p.name} ${on ? "on" : "off"} the floor`}
                                 className={cn(
-                                  "px-2 py-2 text-center",
+                                  "px-1 py-2 text-center",
                                   on ? "text-accent" : "text-mute/40"
                                 )}
                               >
@@ -282,13 +289,13 @@ export function Wowy({ meta }: { meta: Meta }) {
                             );
                           })
                         ) : (
-                          <td className="px-4 py-2">{r.label}</td>
+                          <td className="px-3 py-2">{r.label}</td>
                         )}
                         {COLS.map((c) => (
                           <td
                             key={c.key}
                             className={cn(
-                              "px-3 py-2 text-right tabular-nums",
+                              "px-2 py-2 text-right tabular-nums",
                               c.strong && "font-medium",
                               c.strong && r.net != null && (r.net >= 0 ? "text-good" : "text-bad")
                             )}
@@ -302,12 +309,12 @@ export function Wowy({ meta }: { meta: Meta }) {
                       <tr className="border-t border-border bg-border/20 text-mute">
                         <td
                           colSpan={Math.max(1, chosen.length > 1 ? chosen.length : 1)}
-                          className="px-4 py-2 font-medium"
+                          className="px-3 py-2 font-medium"
                         >
                           {total.label} overall
                         </td>
                         {COLS.map((c) => (
-                          <td key={c.key} className="px-3 py-2 text-right tabular-nums">
+                          <td key={c.key} className="px-2 py-2 text-right tabular-nums">
                             {c.fmt(total[c.key])}
                           </td>
                         ))}

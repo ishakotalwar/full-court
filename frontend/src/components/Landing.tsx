@@ -104,5 +104,3 @@ function Choice({
     </button>
   );
 }
-
-

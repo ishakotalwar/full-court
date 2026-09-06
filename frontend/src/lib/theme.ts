@@ -27,11 +27,6 @@ export const PALETTES = [
     swatch: { light: ["#f7f8fa", "#d64a1e"], dark: ["#0b0d10", "#ff6a3d"] },
   },
   {
-    key: "court",
-    label: "Court",
-    swatch: { light: ["#f4eada", "#c1410c"], dark: ["#1a130e", "#e08a3c"] },
-  },
-  {
     key: "ocean",
     label: "Ocean",
     swatch: { light: ["#eef5f8", "#0e7490"], dark: ["#07141e", "#22d3ee"] },
@@ -52,8 +47,10 @@ const STORAGE_KEY = "full-court-theme";
 
 const palettes = new Set<string>(PALETTES.map((p) => p.key));
 
-/** Accepts what is stored today ("court-dark") and what older builds stored
- *  ("dark"), which named a mode and implied the one palette there was. */
+/** Accepts what is stored today ("ocean-dark") and what older builds stored
+ *  ("dark"), which named a mode and implied the one palette there was. A
+ *  palette that no longer exists parses as nothing, so a browser holding a
+ *  retired one falls back to the default rather than to a blank page. */
 function parse(saved: string | null): { palette: Palette; mode: Mode } | null {
   if (!saved) return null;
   if (saved === "light" || saved === "dark") return { palette: "classic", mode: saved };

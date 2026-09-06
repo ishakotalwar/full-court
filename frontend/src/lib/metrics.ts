@@ -35,6 +35,14 @@ export const METRICS: MetricDef[] = [
   { key: "ortg", label: "Offensive rating", shortLabel: "ORtg", format: "rating", category: "efficiency", higherIsBetter: true, description: "Points produced per 100 possessions" },
   { key: "drtg", label: "Defensive rating", shortLabel: "DRtg", format: "rating", category: "defense", higherIsBetter: false, description: "Points allowed per 100 possessions — lower is better" },
   { key: "pace", label: "Pace", shortLabel: "Pace", format: "rating", category: "usage", higherIsBetter: true, description: "Possessions per game" },
+  // Defense, per possession actually defended. The box score's steals and
+  // blocks per game are above; these are the same acts against the right
+  // denominator, plus the ones the box score never separated out.
+  { key: "blk_100", label: "Blocks per 100", shortLabel: "BLK/100", format: "decimal", category: "defense", higherIsBetter: true, description: "Blocks per 100 possessions defended" },
+  { key: "blk_rim_100", label: "Rim blocks per 100", shortLabel: "RIM BLK", format: "decimal", category: "defense", higherIsBetter: true, description: "Blocks on shots at the rim, per 100 possessions defended — rim protection on its own" },
+  { key: "stl_100", label: "Steals per 100", shortLabel: "STL/100", format: "decimal", category: "defense", higherIsBetter: true, description: "Steals per 100 possessions defended" },
+  { key: "foul_100", label: "Fouls per 100", shortLabel: "FOUL/100", format: "decimal", category: "defense", higherIsBetter: false, description: "Fouls committed per 100 possessions defended — the cost of defending, fewer is better" },
+  { key: "on_def_rtg", label: "On-court defensive rating", shortLabel: "On DRtg", format: "rating", category: "defense", higherIsBetter: false, description: "Points the team allowed per 100 possessions with this player on the floor — lower is better" },
 ];
 
 const BY_KEY = new Map(METRICS.map((m) => [m.key, m]));
