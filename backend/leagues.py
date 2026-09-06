@@ -33,7 +33,7 @@ class League:
         """Calendar year in which `season` tipped off.
 
         A league whose season begins in the second half of the year is
-        labelled by the year it finishes in, so it started the year before.
+        labeled by the year it finishes in, so it started the year before.
         """
         try:
             year = int(str(season)[:4])

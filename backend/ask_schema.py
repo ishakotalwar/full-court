@@ -65,11 +65,11 @@ METRIC_ALIASES: dict[str, str] = {
 # always says which single metric it ranked on.
 SUPERLATIVE_CATEGORIES: dict[str, tuple[str, str | None]] = {
     "defensive": ("blk", "Full Court has no per-player defensive rating, so this "
-                         "ranks on blocks — ask for steals for perimeter defence."),
+                         "ranks on blocks — ask for steals for perimeter defense."),
     "defense": ("blk", "Full Court has no per-player defensive rating, so this "
-                       "ranks on blocks — ask for steals for perimeter defence."),
+                       "ranks on blocks — ask for steals for perimeter defense."),
     "defenders": ("blk", "Full Court has no per-player defensive rating, so this "
-                         "ranks on blocks — ask for steals for perimeter defence."),
+                         "ranks on blocks — ask for steals for perimeter defense."),
     "offensive": ("pts", None),
     "scoring": ("pts", None),
     "shooting": ("ts_pct", None),

@@ -180,7 +180,7 @@ export function Wowy({ meta }: { meta: Meta }) {
             <div className="grid grid-cols-3 gap-x-3 gap-y-5 sm:grid-cols-5 md:grid-cols-6 lg:grid-cols-8">
               {roster.map((p: any) => {
                 const on = picked.includes(p.player_id);
-                // A full selection greys out the rest rather than silently
+                // A full selection grays out the rest rather than silently
                 // ignoring the click.
                 const blocked = !on && full;
                 return (

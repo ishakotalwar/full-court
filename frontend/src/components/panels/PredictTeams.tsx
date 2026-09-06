@@ -74,7 +74,7 @@ export function PredictTeams({ meta }: { meta: Meta }) {
                   </div>
                   <div className="text-xs text-mute">
                     {matchup.home} by {Math.abs(matchup.projected_margin).toFixed(1)}
-                    {matchup.projected_margin < 0 ? " (away favoured)" : ""}
+                    {matchup.projected_margin < 0 ? " (away favored)" : ""}
                   </div>
                 </div>
                 <div className="text-right">

@@ -89,7 +89,7 @@ def fetch_url(url: str) -> pd.DataFrame | None:
     return pd.read_parquet(io.BytesIO(r.content))
 
 
-def normalise_roster(df: pd.DataFrame, league: League, season: int) -> pd.DataFrame:
+def normalize_roster(df: pd.DataFrame, league: League, season: int) -> pd.DataFrame:
     out = pd.DataFrame({
         "season": str(season),
         "league": league.key,
@@ -110,7 +110,7 @@ def build_rosters(league: League, seasons: list[int]) -> pd.DataFrame:
         if raw is None or raw.empty:
             print(f"  {league.label} {season} roster: not published")
             continue
-        rows = normalise_roster(raw, league, season)
+        rows = normalize_roster(raw, league, season)
         print(f"  {league.label} {season} roster: {len(rows):,} players "
               f"across {rows.team.nunique()} teams")
         frames.append(rows)
@@ -181,7 +181,7 @@ def fetch(league: League, season: int) -> pd.DataFrame | None:
     return pd.read_parquet(io.BytesIO(r.content))
 
 
-def normalise(df: pd.DataFrame, league: League, season: int) -> pd.DataFrame:
+def normalize(df: pd.DataFrame, league: League, season: int) -> pd.DataFrame:
     if "type_abbreviation" in df.columns:
         df = df[df["type_abbreviation"].isin(KEEP_TYPES)]
 
@@ -215,7 +215,7 @@ def build(league: League, seasons: list[int]) -> pd.DataFrame:
         if raw is None or raw.empty:
             print(f"  {league.label} {season}: not published")
             continue
-        rows = normalise(raw, league, season)
+        rows = normalize(raw, league, season)
         upcoming = int((~rows.completed).sum())
         print(f"  {league.label} {season}: {len(rows):,} games ({upcoming:,} not yet played)")
         frames.append(rows)

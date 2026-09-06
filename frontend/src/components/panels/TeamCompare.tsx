@@ -7,7 +7,7 @@ import { cn } from "@/lib/cn";
 import { formatSeason } from "@/lib/season";
 
 // Net rating is polarity data (better/worse than break-even), so it gets a
-// diverging scale: two poles through a neutral grey midpoint, centered on 0.
+// diverging scale: two poles through a neutral gray midpoint, centered on 0.
 // Blue/red rather than green/red — green/red is the one pair red-green color
 // blindness cannot separate.
 const DIVERGING: [number, string][] = [
@@ -78,7 +78,7 @@ export function TeamCompare({ meta }: { meta: Meta }) {
     // Label only the extremes. Naming all 30 teams collides into mush; the
     // table underneath carries full identity, and hover covers the rest.
     const byNet = [...rows].sort((a: any, b: any) => b.net - a.net);
-    const labelled = new Set(
+    const labeled = new Set(
       [...byNet.slice(0, 3), ...byNet.slice(-3)].map((r: any) => r.team)
     );
     return [
@@ -87,7 +87,7 @@ export function TeamCompare({ meta }: { meta: Meta }) {
         mode: "markers+text",
         x: rows.map((r: any) => r.ortg),
         y: rows.map((r: any) => r.drtg),
-        text: rows.map((r: any) => (labelled.has(r.team) ? r.team : "")),
+        text: rows.map((r: any) => (labeled.has(r.team) ? r.team : "")),
         textposition: "top center",
         textfont: { size: 10, color: "#8a94a2" },
         hovertext: rows.map((r: any) => r.team),
@@ -165,7 +165,7 @@ export function TeamCompare({ meta }: { meta: Meta }) {
 
       <Card>
         <CardHeader
-          title={season ? `Offense vs. defense — ${formatSeason(season, meta.season_format)}` : "Offense vs. defense"}
+          title="Offense vs. defense"
         />
         <CardBody>
           <Plot data={traces as any} layout={layout} height={480} placeholder="Select a season" />
@@ -174,7 +174,7 @@ export function TeamCompare({ meta }: { meta: Meta }) {
 
       <Card>
         <CardHeader
-          title={season ? `Every team — ${formatSeason(season, meta.season_format)}` : "Every team"}
+          title="Every team"
         />
         <CardBody className="p-0">
           {sorted.length === 0 ? (

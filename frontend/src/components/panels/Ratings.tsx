@@ -29,7 +29,7 @@ const LOAD: Col = {
   title: "Share of the team's possessions this player was on the floor for",
 };
 
-// Offence and defence only exist for the fits that split a possession in two.
+// Offense and defense only exist for the fits that split a possession in two.
 const SIDES: Col[] = [
   { key: "off_rating", label: "Off", title: "What this player adds on offense" },
   {
@@ -42,6 +42,78 @@ const SIDES: Col[] = [
 /** Metrics built by splitting each possession into an offensive and a
  *  defensive half, and so the only ones with parts to show. */
 const SPLIT_METRICS = ["rapm"];
+
+/**
+ * What to plot beside each metric.
+ *
+ * Every one of these puts the metric against the thing it is built from, so
+ * the chart shows what the metric did rather than restating its value: the
+ * three-year and box-prior fits against the single season they adjust, PER
+ * against the possession fit it cannot see, and on/off against its own two
+ * halves. Where both axes are the same quantity a diagonal is drawn, and the
+ * distance from it is the adjustment.
+ */
+type ChartSpec = {
+  title: string;
+  x: string;
+  y: string;
+  xTitle: string;
+  yTitle: string;
+  xLabel: string;
+  yLabel: string;
+  diagonal?: boolean;
+};
+
+const CHARTS: Record<string, ChartSpec> = {
+  rapm: {
+    title: "Offense and defense",
+    x: "off_rating", y: "def_rating",
+    xTitle: "Offense →", yTitle: "Defense →",
+    xLabel: "offense", yLabel: "defense",
+  },
+  rapm_window: {
+    title: "This season against three",
+    x: "rapm", y: "rapm_window",
+    xTitle: "This season →", yTitle: "Three-year fit →",
+    xLabel: "this season", yLabel: "three-year",
+    diagonal: true,
+  },
+  rapm_prior: {
+    title: "Before and after the box prior",
+    x: "rapm", y: "rapm_prior",
+    xTitle: "Stints alone →", yTitle: "With box prior →",
+    xLabel: "stints alone", yLabel: "with prior",
+    diagonal: true,
+  },
+  per: {
+    title: "PER against possession impact",
+    x: "per", y: "rapm",
+    xTitle: "PER →", yTitle: "RAPM →",
+    xLabel: "PER", yLabel: "RAPM",
+  },
+  on_off: {
+    title: "On the floor against off it",
+    x: "on_net", y: "off_net",
+    xTitle: "Net with them on →", yTitle: "Net with them off →",
+    xLabel: "on", yLabel: "off",
+    diagonal: true,
+  },
+};
+
+/** One line of a metric's arithmetic, in the order the numbers arrive at it. */
+type Step = {
+  label: string;
+  value: number | null;
+  pct?: number | null;
+  digits?: number;
+  strong?: boolean;
+  plain?: boolean;  // an index rather than a margin, so no leading sign
+  rule?: boolean;   // ruled off from the lines above
+};
+
+/** PER is an index on its own scale; the rest are points per 100 possessions,
+ *  which a season total is a straight multiple of. */
+const isIndex = (key: string) => key === "per";
 
 /** The parts each half breaks into, nested the way they add up. */
 const PARTS = [
@@ -66,7 +138,7 @@ const ordinal = (v: number) => {
   return `${n}${suffix}`;
 };
 
-/** Percentile within the qualified field, coloured by how good it is. */
+/** Percentile within the qualified field, colored by how good it is. */
 function Pct({ value }: { value: number | null | undefined }) {
   if (value == null) return null;
   return (
@@ -153,9 +225,12 @@ export function Ratings({ meta }: { meta: Meta }) {
   useEffect(() => setSort({ key: ranked, dir: -1 }), [ranked]);
 
   // Per 100 is what the model fits; total is that rate over the possessions
-  // actually played, which rewards the durability the rate deliberately ignores.
+  // actually played, which rewards the durability the rate deliberately
+  // ignores. A share and an index are neither, so both pass through.
   const value = (row: any, key: string) =>
-    scale === "total" && key !== "share" ? asTotal(row[key], row.poss) : row[key];
+    scale === "total" && key !== "share" && !isIndex(key)
+      ? asTotal(row[key], row.poss)
+      : row[key];
 
   const sorted = useMemo(() => {
     const r = [...rows];
@@ -174,48 +249,87 @@ export function Ratings({ meta }: { meta: Meta }) {
     [rows, picked]
   );
 
+  const chart = CHARTS[metric] ?? CHARTS.rapm;
+
   const traces = useMemo(() => {
     if (!rows.length) return [];
-    const labelled = new Set([...rows].sort((a: any, b: any) => b.rapm - a.rapm).slice(0, 4));
+    const xs = rows.map((r: any) => value(r, chart.x));
+    const ys = rows.map((r: any) => value(r, chart.y));
+    const top = new Set(
+      [...rows]
+        .sort((a: any, b: any) => (value(b, ranked) ?? 0) - (value(a, ranked) ?? 0))
+        .slice(0, 4)
+    );
+    const digits = isIndex(chart.x) || scale === "total" ? 1 : 2;
+
+    // Drawn first so the players sit on top of it. Both axes carry the same
+    // quantity here, so the line is where the metric changed nothing.
+    const finite = [...xs, ...ys].filter((v) => typeof v === "number" && isFinite(v));
+    const guide =
+      chart.diagonal && finite.length
+        ? [
+            {
+              type: "scatter",
+              mode: "lines",
+              x: [Math.min(...finite), Math.max(...finite)],
+              y: [Math.min(...finite), Math.max(...finite)],
+              line: { color: "#3a4250", width: 1, dash: "dot" },
+              hoverinfo: "skip",
+            },
+          ]
+        : [];
+
     return [
+      ...guide,
       {
         type: "scatter",
         mode: "markers+text",
-        x: rows.map((r: any) => value(r, "off_rating")),
-        y: rows.map((r: any) => value(r, "def_rating")),
-        text: rows.map((r: any) => (labelled.has(r) ? surname(r.player_name) : "")),
+        x: xs,
+        y: ys,
+        text: rows.map((r: any) => (top.has(r) ? surname(r.player_name) : "")),
         textposition: "top center",
         textfont: { size: 9, color: "#8a94a2" },
         hovertext: rows.map((r: any) => r.player_name),
-        customdata: rows.map((r: any) => [r.team_abbr, r.poss, value(r, "rapm")]),
+        customdata: rows.map((r: any) => [r.team_abbr, r.poss]),
         hovertemplate:
           "<b>%{hovertext}</b> (%{customdata[0]})<br>" +
-          "offense %{x:+.2f} · defense %{y:+.2f}<br>" +
-          "impact %{customdata[2]:+.2f} over %{customdata[1]:.0f} possessions<extra></extra>",
+          `${chart.xLabel} %{x:.${digits}f} · ${chart.yLabel} %{y:.${digits}f}<br>` +
+          "over %{customdata[1]:.0f} possessions<extra></extra>",
         marker: {
           size: 8,
-          color: rows.map((r: any) => r.rapm),
+          color: rows.map((r: any) => value(r, ranked)),
           colorscale: DIVERGING,
-          cmid: 0,
+          // An index has no natural centre at zero, so only a margin is
+          // coloured about it.
+          ...(isIndex(ranked) ? {} : { cmid: 0 }),
           line: { color: "#111518", width: 1 },
         },
       },
     ];
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [rows, scale]);
+  }, [rows, scale, metric, ranked]);
 
   const layout = useMemo(
     () => ({
       margin: { t: 10, r: 10, b: 44, l: 50 },
       showlegend: false,
       hovermode: "closest",
-      xaxis: { title: "Offense →", gridcolor: "#1f2630", zeroline: true, zerolinecolor: "#3a4250" },
-      yaxis: { title: "Defense →", gridcolor: "#1f2630", zeroline: true, zerolinecolor: "#3a4250" },
+      xaxis: {
+        title: chart.xTitle,
+        gridcolor: "#1f2630",
+        zeroline: true,
+        zerolinecolor: "#3a4250",
+      },
+      yaxis: {
+        title: chart.yTitle,
+        gridcolor: "#1f2630",
+        zeroline: true,
+        zerolinecolor: "#3a4250",
+      },
     }),
-    []
+    [chart]
   );
 
-  const seasonLabel = season ? formatSeason(season, meta.season_format) : "";
 
   if (!regularSeasons.length) {
     return (
@@ -401,11 +515,8 @@ export function Ratings({ meta }: { meta: Meta }) {
         </Card>
 
         <div className="space-y-4">
-          {split && (
           <Card>
-            <CardHeader
-              title={`Offense and defense — ${seasonLabel}`}
-            />
+            <CardHeader title={chart.title} />
             <CardBody>
               <Plot
                 data={traces as any}
@@ -415,9 +526,8 @@ export function Ratings({ meta }: { meta: Meta }) {
               />
             </CardBody>
           </Card>
-          )}
 
-          {selected && split && (
+          {selected && (
             <Card>
               <CardHeader
                 lead={
@@ -433,21 +543,124 @@ export function Ratings({ meta }: { meta: Meta }) {
                 right={
                   <div className="text-right">
                     <div className="text-xl font-semibold tabular-nums">
-                      {signed(value(selected, "rapm"), scale === "total" ? 0 : 2)}
+                      {isIndex(ranked)
+                        ? (selected[ranked] ?? 0).toFixed(1)
+                        : signed(value(selected, ranked), scale === "total" ? 0 : 2)}
                     </div>
-                    <Pct value={selected.pct_rapm} />
+                    <Pct value={selected[`pct_${ranked}`]} />
                   </div>
                 }
               />
-              <CardBody className="grid gap-6 sm:grid-cols-2">
-                <Breakdown title="Offensive impact" side="off" row={selected} scale={scale} />
-                <Breakdown title="Defensive impact" side="def" row={selected} scale={scale} />
-              </CardBody>
+              {/* The split fits are the only ones with parts underneath them;
+                  the rest are shown as the arithmetic that produced them. */}
+              {split ? (
+                <CardBody className="grid gap-6 sm:grid-cols-2">
+                  <Breakdown title="Offensive impact" side="off" row={selected} scale={scale} />
+                  <Breakdown title="Defensive impact" side="def" row={selected} scale={scale} />
+                </CardBody>
+              ) : (
+                <CardBody>
+                  <Steps steps={stepsFor(metric, selected, scale)} />
+                </CardBody>
+              )}
             </Card>
           )}
         </div>
       </div>
     </div>
+  );
+}
+
+/**
+ * The steps that produce a metric that has no offensive and defensive halves.
+ *
+ * Each of these is defined against a number the table already holds, so the
+ * card can show where the metric started and what its adjustment did, rather
+ * than repeating the single figure in the header.
+ */
+function stepsFor(metric: string, row: any, scale: "per100" | "total"): Step[] {
+  const digits = scale === "total" ? 0 : 2;
+  const at = (key: string) =>
+    scale === "total" && !isIndex(key) ? asTotal(row[key], row.poss) : row[key];
+  const gap = (a: string, b: string) => {
+    const x = at(a);
+    const y = at(b);
+    return x == null || y == null ? null : x - y;
+  };
+
+  switch (metric) {
+    case "rapm_window":
+      return [
+        { label: "This season", value: at("rapm"), pct: row.pct_rapm, digits },
+        {
+          label: "Three-year fit",
+          value: at("rapm_window"),
+          pct: row.pct_rapm_window,
+          digits,
+          strong: true,
+        },
+        { label: "Moved by", value: gap("rapm_window", "rapm"), digits, rule: true },
+      ];
+    case "rapm_prior":
+      return [
+        { label: "Stints alone", value: at("rapm"), pct: row.pct_rapm, digits },
+        {
+          label: "With box prior",
+          value: at("rapm_prior"),
+          pct: row.pct_rapm_prior,
+          digits,
+          strong: true,
+        },
+        { label: "Moved by", value: gap("rapm_prior", "rapm"), digits, rule: true },
+      ];
+    case "on_off":
+      return [
+        { label: "Net with them on", value: at("on_net"), digits },
+        { label: "Net with them off", value: at("off_net"), digits },
+        {
+          label: "On/off",
+          value: at("on_off"),
+          pct: row.pct_on_off,
+          digits,
+          strong: true,
+          rule: true,
+        },
+        // What survives once the other nine are regressed out.
+        { label: "RAPM", value: at("rapm"), pct: row.pct_rapm, digits, rule: true },
+      ];
+    case "per":
+      return [
+        { label: "PER", value: row.per, pct: row.pct_per, digits: 1, strong: true, plain: true },
+        { label: "League average", value: 15, digits: 1, plain: true },
+        {
+          label: "Above average",
+          value: row.per == null ? null : row.per - 15,
+          digits: 1,
+          rule: true,
+        },
+        { label: "RAPM", value: at("rapm"), pct: row.pct_rapm, digits, rule: true },
+      ];
+    default:
+      return [];
+  }
+}
+
+function Steps({ steps }: { steps: Step[] }) {
+  return (
+    <dl className="space-y-1.5">
+      {steps.map((step) => (
+        <div key={step.label} className={cn(step.rule && "border-t border-border pt-1.5")}>
+          <Line
+            label={step.label}
+            value={step.value}
+            pct={step.pct}
+            digits={step.digits ?? 2}
+            strong={step.strong}
+            plain={step.plain}
+          />
+        </div>
+      ))}
+    </dl>
   );
 }
 
@@ -526,6 +739,7 @@ function Line({
   digits,
   strong,
   muted,
+  plain,
 }: {
   label: string;
   value: number | null;
@@ -533,6 +747,7 @@ function Line({
   digits: number;
   strong?: boolean;
   muted?: boolean;
+  plain?: boolean;
 }) {
   return (
     <div className="flex items-baseline justify-between gap-3">
@@ -546,7 +761,7 @@ function Line({
             muted ? "text-xs" : "text-sm"
           )}
         >
-          {signed(value, digits)}
+          {plain ? (value == null ? "" : value.toFixed(digits)) : signed(value, digits)}
         </span>
       </dd>
     </div>

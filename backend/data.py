@@ -42,7 +42,7 @@ POSSESSION_BASES = {"per75": 75.0, "per100": 100.0}
 RATING_SEASON_TYPES = {"regular": "Regular season", "playoffs": "Playoffs"}
 
 # How impact can be measured. Each is a real metric with a stated method, not a
-# relabelling of the same number: the possession-level fits differ in what they
+# relabeling of the same number: the possession-level fits differ in what they
 # shrink toward and over how long, and the box-score ones never see a stint.
 # LEBRON, EPM and DARKO are deliberately absent — they need player-tracking
 # inputs ESPN does not publish, so anything here wearing those names would be
@@ -70,7 +70,7 @@ IMPACT_METRICS = {
         "label": "PER",
         "column": "per",
         "blurb": "Hollinger's per-minute box-score rating, scaled so the league "
-                 "average is 15. Sees no possessions and no defence beyond "
+                 "average is 15. Sees no possessions and no defense beyond "
                  "steals and blocks.",
     },
     "on_off": {

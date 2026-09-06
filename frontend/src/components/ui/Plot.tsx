@@ -10,7 +10,7 @@ type Props = {
   className?: string;
   height?: number | string;
   /**
-   * Shown centred when `data` is empty. The chart still renders its axes, so
+   * Shown centered when `data` is empty. The chart still renders its axes, so
    * the shape of the answer is visible before anything is selected.
    */
   placeholder?: string;

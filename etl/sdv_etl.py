@@ -57,7 +57,7 @@ TIMEOUT = 120
 # without hardcoding names or ids.
 MIN_TEAM_GAMES = 10
 
-# Shot coordinates: `coordinate_x` runs along the court's length from centre
+# Shot coordinates: `coordinate_x` runs along the court's length from center
 # (+-47 ft) and `coordinate_y` across its width (+-25 ft). Both leagues play on
 # a 94 ft floor with the rim 5.25 ft off the baseline, so the hoop sits at
 # |coordinate_x| = 47 - 5.25.
@@ -267,7 +267,7 @@ def build_teams(tb: pd.DataFrame, games: set) -> pd.DataFrame:
 
 
 def game_season_types(tb: pd.DataFrame) -> pd.Series:
-    """game_id -> "regular" or "playoffs", for labelling shots.
+    """game_id -> "regular" or "playoffs", for labeling shots.
 
     The shots dataset carries no season type of its own, so it borrows the team
     box scores'. All-Star games are excluded the same way the rest of the ETL
@@ -287,7 +287,7 @@ def build_shots(sh: pd.DataFrame, season_types: pd.Series) -> pd.DataFrame:
     # Team events (e.g. team rebounds) carry no athlete, so drop those too.
     s = sh.dropna(subset=["coordinate_x", "coordinate_y", "athlete_id_1"]).copy()
     # A shot in a game the box scores don't cover can't be placed in a season
-    # type, and an unlabelled shot would quietly join whichever side is shown.
+    # type, and an unlabeled shot would quietly join whichever side is shown.
     s["season_type"] = s["game_id"].map(season_types)
     s = s[s["season_type"].notna()]
     # Drop free throws, which carry a placeholder location rather than a real one.

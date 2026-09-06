@@ -233,8 +233,8 @@ function GameRow({
       .then(setLines)
       .catch((e) => setLinesErr(e.message));
   }, [open, league, game.game_id, lines, linesErr]);
-  const homeFavoured = p ? p.home_win_prob >= 0.5 : false;
-  const favourite = p ? (homeFavoured ? game.home : game.away) : null;
+  const homeFavored = p ? p.home_win_prob >= 0.5 : false;
+  const favorite = p ? (homeFavored ? game.home : game.away) : null;
   const favProb = p ? Math.max(p.home_win_prob, p.away_win_prob) : 0;
 
   return (
@@ -251,7 +251,7 @@ function GameRow({
         {p ? (
           <span className="text-right text-sm">
             <span className="tabular-nums text-accent">{(favProb * 100).toFixed(0)}%</span>{" "}
-            <span className="text-mute">{favourite}</span>
+            <span className="text-mute">{favorite}</span>
           </span>
         ) : (
           <span className="text-xs text-mute">no rating</span>
@@ -271,7 +271,7 @@ function GameRow({
                   <div className="text-xs text-mute">away · Elo {p.away_elo}</div>
                 </div>
                 <div className="text-center text-xs text-mute">
-                  {favourite} by {Math.abs(p.projected_margin).toFixed(1)}
+                  {favorite} by {Math.abs(p.projected_margin).toFixed(1)}
                 </div>
                 <div className="text-right">
                   <div className="font-semibold text-ink">{game.home}</div>
@@ -337,7 +337,7 @@ function TeamLines({
   team: string;
   label: string;
   rows: any[];
-  adjustment?: { opponent_defence: number; venue_factor: number };
+  adjustment?: { opponent_defense: number; venue_factor: number };
   completed: boolean;
 }) {
   if (!rows.length) {
@@ -355,7 +355,7 @@ function TeamLines({
         </span>
         {adjustment && (
           <span className="text-[11px] tabular-nums text-mute">
-            opp ×{adjustment.opponent_defence.toFixed(2)} · venue ×
+            opp ×{adjustment.opponent_defense.toFixed(2)} · venue ×
             {adjustment.venue_factor.toFixed(3)}
           </span>
         )}

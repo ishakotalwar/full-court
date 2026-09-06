@@ -3,7 +3,7 @@
 The possession-level metrics live in `etl/lineup_etl.py`, where the stints are.
 What is here needs no play-by-play at all: PER is arithmetic over a season's
 box scores and its league averages, which is both its appeal and its limit — it
-cannot see defence beyond steals and blocks, and it cannot see who a player was
+cannot see defense beyond steals and blocks, and it cannot see who a player was
 on the floor with.
 """
 from __future__ import annotations

@@ -86,7 +86,7 @@ def games(league: League = DEFAULT) -> pd.DataFrame:
                      on=["GAME_DATE", "home", "away"], how="inner")
 
     out = out.drop(columns=["is_home"]).sort_values("GAME_DATE").reset_index(drop=True)
-    # Only a season that crosses New Year is labelled by the year it ends in.
+    # Only a season that crosses New Year is labeled by the year it ends in.
     # Applying the NBA rule to the WNBA dated its summer games a year ahead.
     if league.season_start_month >= 7:
         out["season"] = np.where(out.GAME_DATE.dt.month >= league.season_start_month,
@@ -511,12 +511,12 @@ def projected_leaderboard(league: League = DEFAULT, metric: str = "pts",
 GAME_LINE_METRICS = ("pts", "reb", "ast", "stl", "blk", "tov")
 ROTATION_SIZE = 8
 HOME_SCORING_EDGE = 0.015  # home teams score ~1.5% more than the same team away
-DEFENCE_SHRINK = 0.5       # points allowed also encodes pace, so only half of
-                           # the gap from average is treated as real defence
+DEFENSE_SHRINK = 0.5       # points allowed also encodes pace, so only half of
+                           # the gap from average is treated as real defense
 
 
 @lru_cache(maxsize=8)
-def _defence_factors(league: League, season: int) -> dict[str, float]:
+def _defense_factors(league: League, season: int) -> dict[str, float]:
     """Points each team allowed per game, relative to the league average.
 
     Measured over the most recent season completed before `season`, so a game
@@ -535,7 +535,7 @@ def _defence_factors(league: League, season: int) -> dict[str, float]:
     league_mean = float(per_team.mean())
     if not league_mean:
         return {}
-    return {str(t): 1.0 + DEFENCE_SHRINK * (float(v) / league_mean - 1.0)
+    return {str(t): 1.0 + DEFENSE_SHRINK * (float(v) / league_mean - 1.0)
             for t, v in per_team.items()}
 
 
@@ -555,7 +555,7 @@ def _league_team_totals(league: League, before: int | None = None) -> dict[str, 
 
     Measured on the most recent season completed before `before`, never over
     all of history: scoring moves. Averaging 2003-2025 gives 103.5 points a
-    team, against 113.8 in 2025 alone, and normalising toward the old number
+    team, against 113.8 in 2025 alone, and normalizing toward the old number
     deflates every line by a tenth.
     """
     log = data.gamelog(league)
@@ -789,17 +789,17 @@ def game_player_lines(league: League, home: str, away: str, season: int,
     season it is about to score.
     """
     return _sides(league, _rotations(league, int(season), live),
-                  _defence_factors(league, int(season)), home, away, top)
+                  _defense_factors(league, int(season)), home, away, top)
 
 
 def _sides(league: League, rotations: dict[str, list[dict]],
-           defence: dict[str, float], home: str, away: str, top: int) -> dict:
+           defense: dict[str, float], home: str, away: str, top: int) -> dict:
     """Apply the per-game adjustments to both rotations. The one path the app
     and the backtest share, so what is scored is what is shown."""
     out: dict[str, list[dict]] = {}
     context: dict[str, dict] = {}
     for side, team, opponent in (("home", home, away), ("away", away, home)):
-        opp_factor = defence.get(league.canonical_team(opponent), 1.0)
+        opp_factor = defense.get(league.canonical_team(opponent), 1.0)
         venue = 1.0 + (HOME_SCORING_EDGE if side == "home" else -HOME_SCORING_EDGE)
         scoring = opp_factor * venue
         # Rebounds, assists and the rest move with the opponent but not with
@@ -818,7 +818,7 @@ def _sides(league: League, rotations: dict[str, list[dict]],
         out[side] = rows
         context[side] = {
             "team": team,
-            "opponent_defence": round(opp_factor, 3),
+            "opponent_defense": round(opp_factor, 3),
             "venue_factor": round(venue, 3),
         }
     return {"players": out, "adjustments": context}
@@ -886,7 +886,7 @@ def game_line_backtest(league: League = DEFAULT, metric: str = "pts",
     hindsight = box.groupby(box["player_id"].astype(int))[column].mean().to_dict()
 
     rotations = _rotations(league, season, live=False)
-    defence = _defence_factors(league, season)
+    defense = _defense_factors(league, season)
     # The same projection before it was fitted to a game, to show what the fit
     # is worth on its own.
     unfitted = {int(r["player_id"]): (r.get("season_projected") or {}).get(metric)
@@ -899,7 +899,7 @@ def game_line_backtest(league: League = DEFAULT, metric: str = "pts",
 
     errors: dict[str, list[float]] = {"line": [], "season": [], "naive": [], "hindsight": []}
     for game in played.itertuples():
-        lines = _sides(league, rotations, defence, game.home, game.away, ROTATION_SIZE)
+        lines = _sides(league, rotations, defense, game.home, game.away, ROTATION_SIZE)
         for side, team in (("home", game.home), ("away", game.away)):
             key_team = league.canonical_team(team)
             for row in lines["players"][side]:

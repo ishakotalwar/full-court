@@ -46,7 +46,7 @@ committed, so the deployed API calls nothing.
 
 ## Worth knowing
 
-- NBA seasons are labelled by the year they end, WNBA by their own: `2024` is
+- NBA seasons are labeled by the year they end, WNBA by their own: `2024` is
   2023-24 in one, 2024 in the other.
 - ESPN publishes no possession data, so ortg/drtg/pace are estimated with
   Oliver's formula rather than counted. Player stats can be read per game, per

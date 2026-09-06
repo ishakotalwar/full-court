@@ -16,7 +16,7 @@ const DIVERGING: [number, string][] = [
   [1, "#4dabff"],
 ];
 
-// Picked fives are drawn in a colour the scale above never uses. Orange or
+// Picked fives are drawn in a color the scale above never uses. Orange or
 // green would land inside it and read as a rating rather than a selection.
 const PICKED = "#b084ff";
 
@@ -115,8 +115,8 @@ export function Lineups({ meta }: { meta: Meta }) {
     const byNet = [...rows].sort((a: any, b: any) => b.net - a.net);
     // With nothing picked, label the extremes of the league view by team, the
     // way the league table does. One team's own lineups all carry the same
-    // abbreviation, so there the marker goes unlabelled and hover names the
-    // five. Once fives are picked, they are the only thing worth labelling.
+    // abbreviation, so there the marker goes unlabeled and hover names the
+    // five. Once fives are picked, they are the only thing worth labeling.
     const auto = new Set(team || picked.length ? [] : [...byNet.slice(0, 3), ...byNet.slice(-2)]);
     const isPicked = (r: any) => picked.includes(keyOf(r));
     const chosen = rows.filter(isPicked);
@@ -204,7 +204,6 @@ export function Lineups({ meta }: { meta: Meta }) {
     []
   );
 
-  const seasonLabel = season ? formatSeason(season, meta.season_format) : "";
   const coverage =
     data?.team_minutes && data?.shown_minutes
       ? `${rows.length} lineups, ${Math.round(
@@ -344,7 +343,7 @@ export function Lineups({ meta }: { meta: Meta }) {
                     title="Show this group on the chart"
                     className={cn(
                       "cursor-pointer border-t border-border/60 px-4 py-2.5 transition hover:bg-border/30",
-                      // Matches the chart's pick colour, not the accent.
+                      // Matches the chart's pick color, not the accent.
                       picked.includes(keyOf(r)) && "bg-[#b084ff]/15"
                     )}
                   >
@@ -391,7 +390,7 @@ export function Lineups({ meta }: { meta: Meta }) {
 
         <Card>
           <CardHeader
-            title={team ? `${team} — ${seasonLabel}` : `Every group of ${size} — ${seasonLabel}`}
+            title={team ? team : `Every group of ${size}`}
           />
           <CardBody>
             <Plot

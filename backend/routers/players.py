@@ -29,9 +29,9 @@ def _player_rows(lg, player_id: int, per: str = "game") -> pd.DataFrame:
 def _season_start(lg, season: str) -> pd.Timestamp | None:
     """First day of `season` for this league.
 
-    A season that tips off in the second half of the calendar year is labelled
+    A season that tips off in the second half of the calendar year is labeled
     by the year it finishes in (NBA: `2016` began October 2015); one that runs
-    inside a single year is labelled by that year (WNBA: `2016` began May 2016).
+    inside a single year is labeled by that year (WNBA: `2016` began May 2016).
     """
     start_year = lg.season_start_year(season)
     if start_year is None:

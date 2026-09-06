@@ -113,7 +113,7 @@ const GLOSSARY: Section[] = [
           "Hollinger's Player Efficiency Rating.",
           "A per-minute box-score rating, corrected for team pace.",
           "Scaled so the league average is 15.",
-          "Sees no possessions and no defence beyond steals and blocks.",
+          "Sees no possessions and no defense beyond steals and blocks.",
         ],
       },
       {
@@ -187,7 +187,7 @@ const GLOSSARY: Section[] = [
         term: "League comparison",
         points: [
           "A player's percentage in a zone against every shot taken there that season.",
-          "Drawn from the same kind of game, so playoff shooting is measured against playoff defence.",
+          "Drawn from the same kind of game, so playoff shooting is measured against playoff defense.",
         ],
       },
       {
@@ -232,7 +232,7 @@ const GLOSSARY: Section[] = [
       {
         term: "Season labels",
         points: [
-          "NBA seasons are labelled by the year they end, WNBA seasons by their own year.",
+          "NBA seasons are labeled by the year they end, WNBA seasons by their own year.",
           "2024 means 2023-24 in one and 2024 in the other.",
         ],
       },

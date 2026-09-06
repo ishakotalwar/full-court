@@ -165,7 +165,7 @@ export function Teams({ meta }: { meta: Meta }) {
 
       <Card>
         <CardHeader
-          title={season ? `Four Factors — ${team}, ${formatSeason(season, meta.season_format)}` : "Four Factors"}
+          title={team ? `Four Factors — ${team}` : "Four Factors"}
         />
         <CardBody>
           <Plot

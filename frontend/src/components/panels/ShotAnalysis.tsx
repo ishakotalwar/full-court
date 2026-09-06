@@ -56,7 +56,7 @@ function SurfaceLegend() {
         />
         hotter vs league
       </span>
-      <span>height = attempt volume vs the player's peak · colour = efficiency vs league</span>
+      <span>height = attempt volume vs the player's peak · color = efficiency vs league</span>
       <span className="ml-auto">Drag to orbit · scroll to zoom</span>
     </div>
   );
@@ -194,7 +194,7 @@ function CourtPlot({
   }, [court, zones, selected, mode]);
 
   // A smoothed terrain over the hex bins: height is how much a player shoots
-  // from around a spot against their own busiest spot, colour is how well they
+  // from around a spot against their own busiest spot, color is how well they
   // shoot there against the league's rate for that zone. Cells with almost no
   // attempts are left out rather than drawn flat, so the surface has the shape
   // of where they actually shoot.
@@ -237,7 +237,7 @@ function CourtPlot({
     for (let y = -52.5; y <= 400; y += STEP) ys.push(y);
 
     const mass: number[][] = [];
-    const colour: number[][] = [];
+    const color: number[][] = [];
     for (const y of ys) {
       const mRow: number[] = [];
       const cRow: number[] = [];
@@ -257,7 +257,7 @@ function CourtPlot({
         cRow.push(total > 0 ? weighted / total : 0);
       }
       mass.push(mRow);
-      colour.push(cRow);
+      color.push(cRow);
     }
     const peak = Math.max(...mass.flat(), 1);
     const FLOOR_SHARE = 0.008;   // below this it is noise, not a shooting spot
@@ -267,7 +267,7 @@ function CourtPlot({
       type: "surface",
       x: xs,
       y: ys,
-      surfacecolor: colour,
+      surfacecolor: color,
       cmid: 0,
       cmin: -0.12,
       cmax: 0.12,
@@ -293,7 +293,7 @@ function CourtPlot({
     }
 
     // Sliced, the way the flat court slices: the chosen zone keeps its full
-    // colour, the rest of the terrain fades back, and the zone is outlined on
+    // color, the rest of the terrain fades back, and the zone is outlined on
     // the floor underneath it.
     const zoneAt = ys.map((y) => xs.map((x) => zoneOf(x, y, court)));
     const only = (want: boolean) =>
@@ -567,7 +567,7 @@ function ZoneCard({
   );
 }
 
-/** `seed` is the player-season Ask Full Court just analysed. */
+/** `seed` is the player-season Ask Full Court just analyzed. */
 export function ShotAnalysis({ meta, seed }: { meta: Meta; seed?: any }) {
   const avatar = playerAvatar(meta);
   const [a, setA] = useState<PlayerSeason>(emptySelection);

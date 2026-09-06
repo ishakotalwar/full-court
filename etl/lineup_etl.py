@@ -345,7 +345,7 @@ VALUE_PARTS = ["field_goals", "free_throws", "second_chance", "turnovers"]
 
 # How hard the fit is pulled toward zero: a prior on how far from average a
 # player can be. It is fixed per league rather than re-chosen each season —
-# cross-validating it per season optimises the prediction of individual stints,
+# cross-validating it per season optimizes the prediction of individual stints,
 # which is mostly noise, and leaves every season on a scale of its own that
 # cannot be compared to the next. Being fixed, it also handles sample size on
 # its own: a postseason carries a fraction of a season's possessions, so the
@@ -416,7 +416,7 @@ def _design(stints: pd.DataFrame):
 
     Returns the design matrix, the possession weights, the four value pieces as
     columns, and where each player's offensive and defensive coefficients live.
-    Shared so a refit against a different centre builds exactly the same
+    Shared so a refit against a different center builds exactly the same
     problem rather than a lookalike.
     """
     from scipy import sparse
@@ -773,7 +773,7 @@ def add_box_prior_ratings(ratings: pd.DataFrame, kept: dict, league: League
     Plain ridge pulls a thinly-played player toward average, which is the right
     instinct but the wrong target: the box score already says something about
     them. Fitting a model from box-score rates to the plain RAPM gives a per
-    player expectation, and refitting with that as the centre keeps the stints
+    player expectation, and refitting with that as the center keeps the stints
     as evidence while starting each player somewhere defensible.
 
     Ridge around a prior needs no new solver: with beta = mu + b, minimising
@@ -832,7 +832,7 @@ def _load_optional_players(league: League) -> pd.DataFrame | None:
 
 def _fit_with_prior(stints: pd.DataFrame, box: pd.DataFrame, season: int,
                     league: League, lookup: dict) -> pd.DataFrame | None:
-    """One season's RAPM, centred on the box-score prior rather than zero."""
+    """One season's RAPM, centered on the box-score prior rather than zero."""
     from scipy import sparse
     from sklearn.linear_model import Ridge
 
