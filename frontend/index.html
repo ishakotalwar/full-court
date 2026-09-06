@@ -27,19 +27,35 @@
   </head>
   <script>
       // Runs before first paint so the page never flashes the wrong theme.
+      // The map has to be repeated here rather than imported: this runs before
+      // any module loads. Keep it in step with THEMES in src/lib/theme.ts.
+      // A theme is "<palette>-<mode>". The palette list has to be repeated here
+      // rather than imported: this runs before any module loads. Keep it in
+      // step with PALETTES in src/lib/theme.ts.
       (function () {
+        var PALETTES = ["classic", "court", "ocean", "frost"];
+        function parse(saved) {
+          if (!saved) return null;
+          // What older builds stored: a mode, back when there was one palette.
+          if (saved === "light" || saved === "dark") return "classic-" + saved;
+          var cut = saved.lastIndexOf("-");
+          var palette = saved.slice(0, cut);
+          var mode = saved.slice(cut + 1);
+          var known = PALETTES.indexOf(palette) >= 0;
+          return known && (mode === "light" || mode === "dark") ? saved : null;
+        }
         try {
-          var saved = localStorage.getItem("full-court-theme");
           var theme =
-            saved === "light" || saved === "dark"
-              ? saved
-              : window.matchMedia("(prefers-color-scheme: light)").matches
-                ? "light"
-                : "dark";
+            parse(localStorage.getItem("full-court-theme")) ||
+            (window.matchMedia("(prefers-color-scheme: light)").matches
+              ? "classic-light"
+              : "classic-dark");
           document.documentElement.dataset.theme = theme;
-          document.documentElement.style.colorScheme = theme;
+          document.documentElement.style.colorScheme = theme.slice(
+            theme.lastIndexOf("-") + 1
+          );
         } catch (e) {
-          document.documentElement.dataset.theme = "dark";
+          document.documentElement.dataset.theme = "classic-dark";
         }
       })();
     </script>

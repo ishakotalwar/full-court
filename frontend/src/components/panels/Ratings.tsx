@@ -3,11 +3,12 @@ import { api, type Meta } from "@/lib/api";
 import { Card, CardBody, CardHeader } from "@/components/ui/Card";
 import { Select } from "@/components/ui/Select";
 import { Slider } from "@/components/ui/Slider";
-import { PICKED, Plot } from "@/components/ui/Plot";
+import { Plot, pickColor } from "@/components/ui/Plot";
 import { Avatar } from "@/components/ui/Avatar";
 import { cn } from "@/lib/cn";
 import { BLANK } from "@/lib/labels";
 import { useRowIndex } from "@/lib/rows";
+import { useTheme } from "@/lib/theme";
 import { formatSeason } from "@/lib/season";
 
 const DIVERGING: [number, string][] = [
@@ -177,6 +178,8 @@ export function Ratings({ meta }: { meta: Meta }) {
   const [sort, setSort] = useState<{ key: string; dir: 1 | -1 }>({ key: "rapm", dir: -1 });
   const [picked, setPicked] = useState<number | null>(null);
   const { register, reveal } = useRowIndex<number>();
+  // Only to re-run the trace memo when the palette changes.
+  const theme = useTheme();
 
   // A postseason too small for the ETL to fit has no season to offer, so the
   // selection follows whichever list is live.
@@ -257,6 +260,7 @@ export function Ratings({ meta }: { meta: Meta }) {
     const xs = rows.map((r: any) => value(r, chart.x));
     const ys = rows.map((r: any) => value(r, chart.y));
     const digits = isIndex(chart.x) || scale === "total" ? 1 : 2;
+    const pick = pickColor();
 
     // Drawn first so the players sit on top of it. Both axes carry the same
     // quantity here, so the line is where the metric changed nothing.
@@ -304,14 +308,14 @@ export function Ratings({ meta }: { meta: Meta }) {
           // coloured about it.
           ...(isIndex(ranked) ? {} : { cmid: 0 }),
           line: {
-            color: rows.map((r: any) => (r.player_id === picked ? PICKED : "#111518")),
+            color: rows.map((r: any) => (r.player_id === picked ? pick : "#111518")),
             width: rows.map((r: any) => (r.player_id === picked ? 3 : 1)),
           },
         },
       },
     ];
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [rows, scale, metric, ranked, picked]);
+  }, [rows, scale, metric, ranked, picked, theme]);
 
   // The guide line, when there is one, takes trace 0 and shifts the players to
   // trace 1, so a click has to be told which trace it landed on.

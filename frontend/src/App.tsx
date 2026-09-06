@@ -11,7 +11,15 @@ import { Glossary } from "@/components/Glossary";
 import { PredictCalendar } from "@/components/panels/PredictCalendar";
 import { PredictTeams } from "@/components/panels/PredictTeams";
 import { PredictPlayers } from "@/components/panels/PredictPlayers";
-import { useTheme, toggleTheme } from "@/lib/theme";
+import {
+  PALETTES,
+  setPalette,
+  toggleMode,
+  useMode,
+  usePalette,
+  type Mode as ThemeMode,
+  type Palette,
+} from "@/lib/theme";
 
 /** `group` only draws a separator — it is not a second click. */
 type Mode = "stats" | "predictions";
@@ -196,21 +204,92 @@ function ModeSwitch({ mode, onSwitch }: { mode: Mode; onSwitch: (m: Mode) => voi
   );
 }
 
-/** Light/dark switch. The palette itself lives in CSS variables, so this only
- *  flips one attribute on <html>. */
-function ThemeToggle() {
-  const theme = useTheme();
-  const next = theme === "dark" ? "light" : "dark";
+/** Half background, half accent — enough of a palette to tell them apart in a
+ *  list, and it works for a palette that is not the one currently applied. */
+function Swatch({ palette, mode }: { palette: Palette; mode: ThemeMode }) {
+  const found = PALETTES.find((p) => p.key === palette);
+  const [bg, accent] = found ? found.swatch[mode] : ["#000", "#fff"];
   return (
-    <button
-      type="button"
-      onClick={toggleTheme}
-      className="btn btn-ghost px-2.5 py-1.5 text-sm"
-      title={`Switch to ${next} mode`}
-      aria-label={`Switch to ${next} mode`}
-    >
-      {theme === "dark" ? "☀" : "☾"}
-    </button>
+    <span
+      aria-hidden
+      className="inline-block h-3.5 w-3.5 shrink-0 rounded-full border border-border"
+      style={{ background: `linear-gradient(135deg, ${bg} 0 50%, ${accent} 50% 100%)` }}
+    />
+  );
+}
+
+/**
+ * The two halves of the theme, as two controls: which family of colors, and
+ * which end of it. Every palette exists light and dark, so neither choice
+ * costs you the other.
+ */
+function ThemeToggle() {
+  const palette = usePalette();
+  const mode = useMode();
+  const [open, setOpen] = useState(false);
+
+  // A menu that stays open behind you is worse than no menu.
+  useEffect(() => {
+    if (!open) return;
+    const away = () => setOpen(false);
+    const key = (e: KeyboardEvent) => e.key === "Escape" && setOpen(false);
+    window.addEventListener("click", away);
+    window.addEventListener("keydown", key);
+    return () => {
+      window.removeEventListener("click", away);
+      window.removeEventListener("keydown", key);
+    };
+  }, [open]);
+
+  return (
+    <div className="flex items-center gap-1">
+      <div className="relative" onClick={(e) => e.stopPropagation()}>
+        <button
+          type="button"
+          onClick={() => setOpen((o) => !o)}
+          className="btn btn-ghost flex items-center gap-1.5 px-2.5 py-1.5 text-sm"
+          title="Color theme"
+          aria-label="Color theme"
+          aria-expanded={open}
+        >
+          <Swatch palette={palette} mode={mode} />
+          <span aria-hidden className="text-[10px] leading-none text-mute">▾</span>
+        </button>
+
+        {open && (
+          <div className="absolute right-0 top-full z-30 mt-1 min-w-[8.5rem] border border-border bg-panel py-1 shadow-lg shadow-black/20">
+            {PALETTES.map((p) => (
+              <button
+                key={p.key}
+                type="button"
+                onClick={() => {
+                  setPalette(p.key);
+                  setOpen(false);
+                }}
+                className={cn(
+                  "flex w-full items-center gap-2 px-3 py-1.5 text-left text-sm transition hover:bg-border/50",
+                  p.key === palette ? "text-ink" : "text-mute hover:text-ink"
+                )}
+              >
+                <Swatch palette={p.key} mode={mode} />
+                <span>{p.label}</span>
+                {p.key === palette && <span className="ml-auto text-accent">✓</span>}
+              </button>
+            ))}
+          </div>
+        )}
+      </div>
+
+      <button
+        type="button"
+        onClick={toggleMode}
+        className="btn btn-ghost px-2.5 py-1.5 text-sm"
+        title={`Switch to ${mode === "dark" ? "light" : "dark"} mode`}
+        aria-label={`Switch to ${mode === "dark" ? "light" : "dark"} mode`}
+      >
+        {mode === "dark" ? "☀" : "☾"}
+      </button>
+    </div>
   );
 }
 

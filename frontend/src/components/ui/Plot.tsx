@@ -51,6 +51,11 @@ export const traceColor = (i: number) => COLORWAY[i % COLORWAY.length];
  */
 export const PICKED = "#ff6a3d";
 
+/** The pick color for the theme in force. Read at render time, so a chart
+ *  drawn under Ocean rings its picked point in cyan rather than in the
+ *  default theme's orange. */
+export const pickColor = () => themeColor("accent", PICKED);
+
 /**
  * Built fresh per render on purpose. Plotly writes computed state (axis `type`,
  * `range`, `_categories`) back onto the layout object it is handed, so a shared

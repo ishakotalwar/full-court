@@ -2,10 +2,11 @@ import { useEffect, useMemo, useState } from "react";
 import { api, type Meta } from "@/lib/api";
 import { Card, CardBody, CardHeader } from "@/components/ui/Card";
 import { Select } from "@/components/ui/Select";
-import { PICKED, Plot } from "@/components/ui/Plot";
+import { Plot, pickColor } from "@/components/ui/Plot";
 import { cn } from "@/lib/cn";
 import { BLANK } from "@/lib/labels";
 import { useRowIndex } from "@/lib/rows";
+import { useTheme } from "@/lib/theme";
 import { formatSeason } from "@/lib/season";
 
 // Net rating is polarity data (better/worse than break-even), so it gets a
@@ -68,6 +69,8 @@ export function TeamCompare({ meta }: { meta: Meta }) {
   const rows = data?.rows ?? [];
   const avg = data?.league_avg;
   const { register, reveal } = useRowIndex<string>();
+  // Only to re-run the trace memo when the palette changes.
+  const theme = useTheme();
 
   const togglePick = (team: string) => {
     setPicked((current) =>
@@ -89,6 +92,7 @@ export function TeamCompare({ meta }: { meta: Meta }) {
 
   const traces = useMemo(() => {
     if (!rows.length) return [];
+    const pick = pickColor();
     // Nothing is named until it is asked for. All 30 at once collides into
     // mush, and the table underneath already carries every name — so a team is
     // labeled here when its row is clicked, or when its own dot is.
@@ -117,7 +121,7 @@ export function TeamCompare({ meta }: { meta: Meta }) {
           // A ring in the surface color keeps overlapping teams separable; a
           // picked team wears the pick color instead.
           line: {
-            color: rows.map((r: any) => (picked.includes(r.team) ? PICKED : "#111518")),
+            color: rows.map((r: any) => (picked.includes(r.team) ? pick : "#111518")),
             width: rows.map((r: any) => (picked.includes(r.team) ? 3 : 2)),
           },
           colorbar: {
@@ -130,7 +134,7 @@ export function TeamCompare({ meta }: { meta: Meta }) {
       },
     ];
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [rows, picked.join(",")]);
+  }, [rows, picked.join(","), theme]);
 
   const layout = useMemo(() => {
     // Axis scaffolding is returned even with no rows, so the empty chart still

@@ -3,11 +3,12 @@ import { api, type Meta } from "@/lib/api";
 import { Card, CardBody, CardHeader } from "@/components/ui/Card";
 import { Select } from "@/components/ui/Select";
 import { Slider } from "@/components/ui/Slider";
-import { PICKED, Plot } from "@/components/ui/Plot";
+import { Plot, pickColor } from "@/components/ui/Plot";
 import { Avatar } from "@/components/ui/Avatar";
 import { cn } from "@/lib/cn";
 import { BLANK } from "@/lib/labels";
 import { useRowIndex } from "@/lib/rows";
+import { useTheme } from "@/lib/theme";
 import { formatSeason } from "@/lib/season";
 
 // Same diverging scale the league table uses for net rating: blue and red
@@ -92,6 +93,8 @@ export function Lineups({ meta }: { meta: Meta }) {
   const keyOf = (r: any) =>
     `${r.team_abbr}-${r.players.map((p: any) => p.id).join("-")}`;
   const { register, reveal } = useRowIndex<string>();
+  // Only to re-run the trace memo when the palette changes.
+  const theme = useTheme();
   const togglePick = (r: any) => {
     const k = keyOf(r);
     setPicked((current) =>
@@ -132,6 +135,7 @@ export function Lineups({ meta }: { meta: Meta }) {
     // Minutes drive the marker area, not its radius: at radius the biggest
     // lineup swallows the chart.
     const maxMin = Math.max(...rows.map((r: any) => r.min));
+    const pick = pickColor();
     const rest = unpicked;
     const markerSize = (r: any) => 8 + 26 * Math.sqrt(r.min / maxMin);
     const hover =
@@ -197,13 +201,13 @@ export function Lineups({ meta }: { meta: Meta }) {
           cmid: 0,
           showscale: false,
           opacity: 1,
-          line: { color: PICKED, width: 3 },
+          line: { color: pick, width: 3 },
         },
       });
     }
     return out;
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [rows, team, picked.join(","), chosen, unpicked]);
+  }, [rows, team, picked.join(","), chosen, unpicked, theme]);
 
   const layout = useMemo(
     () => ({

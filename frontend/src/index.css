@@ -2,8 +2,15 @@
 @tailwind components;
 @tailwind utilities;
 
+
+/* Palettes come in pairs: each color family has a light and a dark half, and
+   the two controls in the header pick along those two axes independently.
+   `:root` alone is the default half of the default family, for the moment
+   before the pre-paint script in index.html has stamped a choice. */
+
+/* --- Classic: the site's own orange ------------------------------------- */
 :root,
-:root[data-theme="dark"] {
+:root[data-theme="classic-dark"] {
   color-scheme: dark;
   --c-bg: 11 13 16;
   --c-panel: 18 22 28;
@@ -19,7 +26,7 @@
   --c-axis: 42 50 64;
 }
 
-:root[data-theme="light"] {
+:root[data-theme="classic-light"] {
   color-scheme: light;
   --c-bg: 247 248 250;
   --c-panel: 255 255 255;
@@ -36,6 +43,106 @@
   --c-grid: 226 231 238;
   --c-axis: 203 211 222;
 }
+
+/* --- Court: hardwood, the way a gym program or a paper box score looks --- */
+:root[data-theme="court-light"] {
+  color-scheme: light;
+  --c-bg: 244 234 218;
+  --c-panel: 253 247 238;
+  --c-border: 219 203 179;
+  --c-ink: 43 33 24;
+  --c-mute: 122 106 88;
+  --c-accent: 193 65 12;
+  --c-accent2: 13 116 128;
+  --c-good: 21 128 68;
+  --c-bad: 190 42 32;
+  --c-on-accent: 255 255 255;
+  --c-grid: 226 212 192;
+  --c-axis: 198 180 155;
+}
+
+:root[data-theme="court-dark"] {
+  color-scheme: dark;
+  --c-bg: 26 19 14;
+  --c-panel: 38 28 21;
+  --c-border: 62 47 35;
+  --c-ink: 240 230 218;
+  --c-mute: 168 148 126;
+  --c-accent: 224 138 60;
+  --c-accent2: 90 170 190;
+  --c-good: 74 222 128;
+  --c-bad: 248 113 113;
+  --c-on-accent: 26 16 6;
+  --c-grid: 62 47 35;
+  --c-axis: 82 63 47;
+}
+
+/* --- Ocean: teal on water ----------------------------------------------- */
+:root[data-theme="ocean-light"] {
+  color-scheme: light;
+  --c-bg: 238 245 248;
+  --c-panel: 255 255 255;
+  --c-border: 205 222 231;
+  --c-ink: 12 34 46;
+  --c-mute: 88 116 132;
+  --c-accent: 14 116 144;
+  --c-accent2: 194 65 12;
+  --c-good: 21 128 68;
+  --c-bad: 190 42 32;
+  --c-on-accent: 255 255 255;
+  --c-grid: 219 232 238;
+  --c-axis: 190 209 219;
+}
+
+:root[data-theme="ocean-dark"] {
+  color-scheme: dark;
+  --c-bg: 7 20 30;
+  --c-panel: 12 30 43;
+  --c-border: 26 51 68;
+  --c-ink: 223 236 244;
+  --c-mute: 132 158 176;
+  --c-accent: 34 211 238;
+  --c-accent2: 251 146 60;
+  --c-good: 34 197 94;
+  --c-bad: 248 113 113;
+  --c-on-accent: 3 20 26;
+  --c-grid: 26 51 68;
+  --c-axis: 38 68 89;
+}
+
+/* --- Frost: cool and clinical, for reading numbers ---------------------- */
+:root[data-theme="frost-light"] {
+  color-scheme: light;
+  --c-bg: 241 245 249;
+  --c-panel: 255 255 255;
+  --c-border: 214 223 233;
+  --c-ink: 15 30 46;
+  --c-mute: 90 106 125;
+  --c-accent: 37 99 235;
+  --c-accent2: 13 148 136;
+  --c-good: 21 128 68;
+  --c-bad: 190 42 32;
+  --c-on-accent: 255 255 255;
+  --c-grid: 224 231 239;
+  --c-axis: 197 208 220;
+}
+
+:root[data-theme="frost-dark"] {
+  color-scheme: dark;
+  --c-bg: 13 18 28;
+  --c-panel: 19 26 38;
+  --c-border: 34 45 62;
+  --c-ink: 226 233 242;
+  --c-mute: 138 152 172;
+  --c-accent: 96 165 250;
+  --c-accent2: 45 212 191;
+  --c-good: 74 222 128;
+  --c-bad: 248 113 113;
+  --c-on-accent: 8 14 24;
+  --c-grid: 34 45 62;
+  --c-axis: 48 62 84;
+}
+
 
 html,
 body,
