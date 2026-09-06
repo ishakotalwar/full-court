@@ -1,6 +1,7 @@
 import { useEffect, useRef } from "react";
 import Plotly from "plotly.js-dist-min";
 
+import { BLANK, placeLabels } from "@/lib/labels";
 import { themeColor, useTheme } from "@/lib/theme";
 
 type Props = {
@@ -14,12 +15,16 @@ type Props = {
    * the shape of the answer is visible before anything is selected.
    */
   placeholder?: string;
-  /** Fired for a clicked point: its trace name, its data coordinates and where
-   *  on screen the click landed, for charts you can drill into. */
+  /** Fired for a clicked point: which point it was, its trace name, its data
+   *  coordinates and where on screen the click landed, for charts you can
+   *  drill into. `curveNumber` and `pointIndex` locate it in the data the
+   *  caller handed over, which is how a chart click finds its table row. */
   onPointClick?: (point: {
     name?: string;
     x?: number;
     y?: number;
+    curveNumber: number;
+    pointIndex: number;
     clientX: number;
     clientY: number;
   }) => void;
@@ -36,6 +41,15 @@ export const COLORWAY = [
 ];
 
 export const traceColor = (i: number) => COLORWAY[i % COLORWAY.length];
+
+/**
+ * What a reader has picked out of a table, on any chart that has one beside
+ * it — the accent, the same color selection means everywhere else on the site.
+ *
+ * It rings a point rather than filling it, so a picked point keeps the color
+ * its own number earned and cannot be mistaken for a good or a bad one.
+ */
+export const PICKED = "#ff6a3d";
 
 /**
  * Built fresh per render on purpose. Plotly writes computed state (axis `type`,
@@ -82,10 +96,49 @@ function deepMerge<T>(a: any, b: any): T {
   return out;
 }
 
+/**
+ * Move the point labels off each other and off the dots.
+ *
+ * Only after a draw: the placement is worked out in pixels, so it needs the
+ * axes to know how much room they were given.
+ */
+function settle(el: any, source: any[]) {
+  try {
+    const placement = placeLabels(el, source);
+    if (!placement) return;
+
+    // Most charts need nothing moved, and a restyle there is a wasted redraw
+    // whose async tail can outlive the chart if the view is switched.
+    const current = el._fullData ?? [];
+    const settled = placement.indices.every((trace, n) => {
+      const drawn = current[trace] ?? {};
+      const pos = drawn.textposition;
+      return (
+        placement.text[n].every((t, i) => t === (drawn.text?.[i] ?? BLANK)) &&
+        placement.textposition[n].every((t, i) => t === (Array.isArray(pos) ? pos[i] : pos))
+      );
+    });
+    if (settled) return;
+
+    Plotly.restyle(
+      el,
+      { text: placement.text, textposition: placement.textposition },
+      placement.indices
+    );
+  } catch {
+    // Labels sitting where Plotly first put them is a cosmetic loss; it is not
+    // worth taking the chart down for.
+  }
+}
+
 export function Plot({ data, layout, config, className, height = 420, placeholder,
                       onPointClick, onPointHover }: Props) {
   const ref = useRef<HTMLDivElement>(null);
   const theme = useTheme();
+  // Read by the resize observer, which is set up once and outlives any one
+  // version of `data`.
+  const dataRef = useRef(data);
+  dataRef.current = data;
   useEffect(() => {
     if (!ref.current) return;
     const empty = !data || data.length === 0;
@@ -132,6 +185,8 @@ export function Plot({ data, layout, config, className, height = 420, placeholde
             name: hit.data?.name,
             x: typeof hit.x === "number" ? hit.x : undefined,
             y: typeof hit.y === "number" ? hit.y : undefined,
+            curveNumber: hit.curveNumber ?? 0,
+            pointIndex: hit.pointIndex ?? hit.pointNumber ?? 0,
             clientX: e?.event?.clientX ?? 0,
             clientY: e?.event?.clientY ?? 0,
           });
@@ -140,7 +195,13 @@ export function Plot({ data, layout, config, className, height = 420, placeholde
       // `responsive` only reacts to window resizes. When the container itself
       // changes size — a height prop that grows once data arrives — Plotly keeps
       // its first measurement and the chart is drawn short inside a taller box.
-      Plotly.Plots.resize(el);
+      // A resize resolves a tick later too, and rejects outright if the view
+      // has been switched out from under it in the meantime.
+      Plotly.Plots.resize(el)
+        .then(() => {
+          if (!stale && (el as any)._fullLayout) settle(el, data);
+        })
+        .catch(() => {});
     });
     return () => {
       stale = true;
@@ -153,7 +214,14 @@ export function Plot({ data, layout, config, className, height = 420, placeholde
     const el = ref.current;
     if (!el || typeof ResizeObserver === "undefined") return;
     const ro = new ResizeObserver(() => {
-      if ((el as any)._fullLayout) Plotly.Plots.resize(el);
+      if (!(el as any)._fullLayout) return;
+      // A different width is a different set of collisions, so the labels are
+      // laid out again from the original text rather than kept as they were.
+      Plotly.Plots.resize(el)
+        .then(() => {
+          if ((el as any)._fullLayout) settle(el, dataRef.current);
+        })
+        .catch(() => {});
     });
     ro.observe(el);
     return () => ro.disconnect();

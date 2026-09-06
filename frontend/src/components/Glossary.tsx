@@ -132,10 +132,10 @@ const GLOSSARY: Section[] = [
         ],
       },
       {
-        term: "Per 100 · Total",
+        term: "Per 100 possessions · Season total",
         points: [
           "Whether an impact number is a rate, or that rate over the possessions actually played.",
-          "Total rewards the durability the rate deliberately ignores.",
+          "The season total rewards the durability the rate deliberately ignores.",
         ],
       },
     ],

@@ -2,8 +2,10 @@ import { useEffect, useMemo, useState } from "react";
 import { api, type Meta } from "@/lib/api";
 import { Card, CardBody, CardHeader } from "@/components/ui/Card";
 import { Select } from "@/components/ui/Select";
-import { Plot } from "@/components/ui/Plot";
+import { PICKED, Plot } from "@/components/ui/Plot";
 import { cn } from "@/lib/cn";
+import { BLANK } from "@/lib/labels";
+import { useRowIndex } from "@/lib/rows";
 import { formatSeason } from "@/lib/season";
 
 // Net rating is polarity data (better/worse than break-even), so it gets a
@@ -43,6 +45,7 @@ export function TeamCompare({ meta }: { meta: Meta }) {
   const [data, setData] = useState<any>(null);
   const [err, setErr] = useState<string | null>(null);
   const [sort, setSort] = useState<{ key: string; dir: 1 | -1 }>({ key: "net", dir: -1 });
+  const [picked, setPicked] = useState<string[]>([]);
 
   useEffect(() => {
     if (!season) {
@@ -52,7 +55,10 @@ export function TeamCompare({ meta }: { meta: Meta }) {
     setErr(null);
     api
       .teamsLeague(season, meta.league)
-      .then(setData)
+      .then((d) => {
+        setData(d);
+        setPicked([]); // last season's names mean nothing on this one's chart
+      })
       .catch((e) => {
         setErr(e.message);
         setData(null);
@@ -61,6 +67,14 @@ export function TeamCompare({ meta }: { meta: Meta }) {
 
   const rows = data?.rows ?? [];
   const avg = data?.league_avg;
+  const { register, reveal } = useRowIndex<string>();
+
+  const togglePick = (team: string) => {
+    setPicked((current) =>
+      current.includes(team) ? current.filter((t) => t !== team) : [...current, team]
+    );
+    reveal(team);
+  };
 
   const sorted = useMemo(() => {
     const r = [...rows];
@@ -75,33 +89,37 @@ export function TeamCompare({ meta }: { meta: Meta }) {
 
   const traces = useMemo(() => {
     if (!rows.length) return [];
-    // Label only the extremes. Naming all 30 teams collides into mush; the
-    // table underneath carries full identity, and hover covers the rest.
-    const byNet = [...rows].sort((a: any, b: any) => b.net - a.net);
-    const labeled = new Set(
-      [...byNet.slice(0, 3), ...byNet.slice(-3)].map((r: any) => r.team)
-    );
+    // Nothing is named until it is asked for. All 30 at once collides into
+    // mush, and the table underneath already carries every name — so a team is
+    // labeled here when its row is clicked, or when its own dot is.
     return [
       {
         type: "scatter",
         mode: "markers+text",
         x: rows.map((r: any) => r.ortg),
         y: rows.map((r: any) => r.drtg),
-        text: rows.map((r: any) => (labeled.has(r.team) ? r.team : "")),
+        text: rows.map((r: any) => (picked.includes(r.team) ? r.team : BLANK)),
         textposition: "top center",
-        textfont: { size: 10, color: "#8a94a2" },
+        // A name on a team out at the edge of the field is wider than the room
+        // left beside it, and clipped text is no text at all.
+        cliponaxis: false,
+        textfont: { size: 12 },
         hovertext: rows.map((r: any) => r.team),
         customdata: rows.map((r: any) => [r.wins, r.losses, r.net, r.pace]),
         hovertemplate:
           "<b>%{hovertext}</b><br>%{customdata[0]}–%{customdata[1]}<br>" +
           "ORtg %{x:.1f} · DRtg %{y:.1f}<br>Net %{customdata[2]:+.1f} · Pace %{customdata[3]:.1f}<extra></extra>",
         marker: {
-          size: 15,
+          size: rows.map((r: any) => (picked.includes(r.team) ? 19 : 15)),
           color: rows.map((r: any) => r.net),
           colorscale: DIVERGING,
           cmid: 0,
-          // A ring in the surface color keeps overlapping teams separable.
-          line: { color: "#111518", width: 2 },
+          // A ring in the surface color keeps overlapping teams separable; a
+          // picked team wears the pick color instead.
+          line: {
+            color: rows.map((r: any) => (picked.includes(r.team) ? PICKED : "#111518")),
+            width: rows.map((r: any) => (picked.includes(r.team) ? 3 : 2)),
+          },
           colorbar: {
             title: { text: "Net", side: "right" },
             thickness: 10,
@@ -111,7 +129,8 @@ export function TeamCompare({ meta }: { meta: Meta }) {
         },
       },
     ];
-  }, [rows]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [rows, picked.join(",")]);
 
   const layout = useMemo(() => {
     // Axis scaffolding is returned even with no rows, so the empty chart still
@@ -168,7 +187,16 @@ export function TeamCompare({ meta }: { meta: Meta }) {
           title="Offense vs. defense"
         />
         <CardBody>
-          <Plot data={traces as any} layout={layout} height={480} placeholder="Select a season" />
+          <Plot
+            data={traces as any}
+            layout={layout}
+            height={480}
+            placeholder="Select a season"
+            onPointClick={(p) => {
+              const row = rows[p.pointIndex];
+              if (row) togglePick(row.team);
+            }}
+          />
         </CardBody>
       </Card>
 
@@ -209,7 +237,16 @@ export function TeamCompare({ meta }: { meta: Meta }) {
                 </thead>
                 <tbody>
                   {sorted.map((r: any) => (
-                    <tr key={r.team} className="border-t border-border/60 hover:bg-border/30">
+                    <tr
+                      key={r.team}
+                      ref={register(r.team)}
+                      onClick={() => togglePick(r.team)}
+                      title="Name this team on the chart"
+                      className={cn(
+                        "cursor-pointer border-t border-border/60 transition hover:bg-border/30",
+                        picked.includes(r.team) && "bg-accent/10"
+                      )}
+                    >
                       <td className="whitespace-nowrap px-4 py-2">{r.team}</td>
                       {COLS.map((c) => (
                         <td key={c.key} className="px-3 py-2 text-right tabular-nums">

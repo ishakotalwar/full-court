@@ -3,9 +3,11 @@ import { api, type Meta } from "@/lib/api";
 import { Card, CardBody, CardHeader } from "@/components/ui/Card";
 import { Select } from "@/components/ui/Select";
 import { Slider } from "@/components/ui/Slider";
-import { Plot } from "@/components/ui/Plot";
+import { PICKED, Plot } from "@/components/ui/Plot";
 import { Avatar } from "@/components/ui/Avatar";
 import { cn } from "@/lib/cn";
+import { BLANK } from "@/lib/labels";
+import { useRowIndex } from "@/lib/rows";
 import { formatSeason } from "@/lib/season";
 
 const DIVERGING: [number, string][] = [
@@ -127,8 +129,6 @@ const PART_LABEL: Record<string, string> = {
   free_throws: "Free throws",
 };
 
-const surname = (name: string) => name.trim().split(/\s+/).slice(1).join(" ") || name;
-
 const ordinal = (v: number) => {
   const n = Math.round(v);
   const suffix =
@@ -176,6 +176,7 @@ export function Ratings({ meta }: { meta: Meta }) {
   const [err, setErr] = useState<string | null>(null);
   const [sort, setSort] = useState<{ key: string; dir: 1 | -1 }>({ key: "rapm", dir: -1 });
   const [picked, setPicked] = useState<number | null>(null);
+  const { register, reveal } = useRowIndex<number>();
 
   // A postseason too small for the ETL to fit has no season to offer, so the
   // selection follows whichever list is live.
@@ -255,11 +256,6 @@ export function Ratings({ meta }: { meta: Meta }) {
     if (!rows.length) return [];
     const xs = rows.map((r: any) => value(r, chart.x));
     const ys = rows.map((r: any) => value(r, chart.y));
-    const top = new Set(
-      [...rows]
-        .sort((a: any, b: any) => (value(b, ranked) ?? 0) - (value(a, ranked) ?? 0))
-        .slice(0, 4)
-    );
     const digits = isIndex(chart.x) || scale === "total" ? 1 : 2;
 
     // Drawn first so the players sit on top of it. Both axes carry the same
@@ -286,9 +282,14 @@ export function Ratings({ meta }: { meta: Meta }) {
         mode: "markers+text",
         x: xs,
         y: ys,
-        text: rows.map((r: any) => (top.has(r) ? surname(r.player_name) : "")),
+        // Only the player picked out of the table is named. Fifty names at
+        // once is a wall of text; the one being looked at is the useful one.
+        text: rows.map((r: any) => (r.player_id === picked ? r.player_name : BLANK)),
         textposition: "top center",
-        textfont: { size: 9, color: "#8a94a2" },
+        cliponaxis: false,
+        // Ink, not the pick color: every label on this chart is a pick
+        // already, and the accent is thin at this size on a light page.
+        textfont: { size: 12 },
         hovertext: rows.map((r: any) => r.player_name),
         customdata: rows.map((r: any) => [r.team_abbr, r.poss]),
         hovertemplate:
@@ -296,18 +297,32 @@ export function Ratings({ meta }: { meta: Meta }) {
           `${chart.xLabel} %{x:.${digits}f} · ${chart.yLabel} %{y:.${digits}f}<br>` +
           "over %{customdata[1]:.0f} possessions<extra></extra>",
         marker: {
-          size: 8,
+          size: rows.map((r: any) => (r.player_id === picked ? 13 : 8)),
           color: rows.map((r: any) => value(r, ranked)),
           colorscale: DIVERGING,
           // An index has no natural centre at zero, so only a margin is
           // coloured about it.
           ...(isIndex(ranked) ? {} : { cmid: 0 }),
-          line: { color: "#111518", width: 1 },
+          line: {
+            color: rows.map((r: any) => (r.player_id === picked ? PICKED : "#111518")),
+            width: rows.map((r: any) => (r.player_id === picked ? 3 : 1)),
+          },
         },
       },
     ];
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [rows, scale, metric, ranked]);
+  }, [rows, scale, metric, ranked, picked]);
+
+  // The guide line, when there is one, takes trace 0 and shifts the players to
+  // trace 1, so a click has to be told which trace it landed on.
+  const players = traces.length - 1;
+
+  // Picking the same player again clears the name off the chart. The card
+  // below falls back to the leader, so there is always something to read.
+  const choose = (player_id: number) => {
+    setPicked((current) => (current === player_id ? null : player_id));
+    reveal(player_id);
+  };
 
   const layout = useMemo(
     () => ({
@@ -357,8 +372,8 @@ export function Ratings({ meta }: { meta: Meta }) {
             <div className="flex items-center gap-5 text-sm">
               <Toggle
                 options={[
-                  { v: "per100", label: "Per 100" },
-                  { v: "total", label: "Total" },
+                  { v: "per100", label: "Per 100 possessions" },
+                  { v: "total", label: "Season total" },
                 ]}
                 value={scale}
                 onChange={(v) => setScale(v as "per100" | "total")}
@@ -467,7 +482,8 @@ export function Ratings({ meta }: { meta: Meta }) {
                     {sorted.map((r: any, i: number) => (
                       <tr
                         key={r.player_id}
-                        onClick={() => setPicked(r.player_id)}
+                        ref={register(r.player_id)}
+                        onClick={() => choose(r.player_id)}
                         className={cn(
                           "cursor-pointer border-t border-border/60 hover:bg-border/30",
                           r.player_id === selected?.player_id && "bg-border/40"
@@ -523,6 +539,10 @@ export function Ratings({ meta }: { meta: Meta }) {
                 layout={layout as any}
                 height={286}
                 placeholder="No player clears this floor"
+                onPointClick={(p) => {
+                  const row = p.curveNumber === players ? rows[p.pointIndex] : null;
+                  if (row) choose(row.player_id);
+                }}
               />
             </CardBody>
           </Card>

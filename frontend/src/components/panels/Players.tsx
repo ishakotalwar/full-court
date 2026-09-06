@@ -173,6 +173,9 @@ export function Players({ meta }: { meta: Meta }) {
                         s.percentile != null ? ordinal(s.percentile) : ""
                       ),
                       textposition: "outside",
+                      // Without this Plotly folds a label that runs past the
+                      // axis back inside the bar, on top of the fill.
+                      cliponaxis: false,
                       marker: {
                         color: stats.map((s: any) => s.percentile),
                         colorscale: [[0, "#d73027"], [0.5, "#6b7685"], [1, "#4dabff"]],

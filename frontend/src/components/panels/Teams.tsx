@@ -78,6 +78,7 @@ export function Teams({ meta }: { meta: Meta }) {
         marker: { color: "#ff6a3d" },
         text: labels.map((k) => factors.team_ff[k]?.toFixed(3) ?? ""),
         textposition: "outside",
+        cliponaxis: false,
       },
       {
         type: "bar",
@@ -87,6 +88,7 @@ export function Teams({ meta }: { meta: Meta }) {
         marker: { color: "#4a5568" },
         text: labels.map((k) => factors.league_avg[k]?.toFixed(3) ?? ""),
         textposition: "outside",
+        cliponaxis: false,
       },
     ];
   }, [factors, team]);

@@ -3,9 +3,11 @@ import { api, type Meta } from "@/lib/api";
 import { Card, CardBody, CardHeader } from "@/components/ui/Card";
 import { Select } from "@/components/ui/Select";
 import { Slider } from "@/components/ui/Slider";
-import { Plot } from "@/components/ui/Plot";
+import { PICKED, Plot } from "@/components/ui/Plot";
 import { Avatar } from "@/components/ui/Avatar";
 import { cn } from "@/lib/cn";
+import { BLANK } from "@/lib/labels";
+import { useRowIndex } from "@/lib/rows";
 import { formatSeason } from "@/lib/season";
 
 // Same diverging scale the league table uses for net rating: blue and red
@@ -18,7 +20,6 @@ const DIVERGING: [number, string][] = [
 
 // Picked fives are drawn in a color the scale above never uses. Orange or
 // green would land inside it and read as a rating rather than a selection.
-const PICKED = "#b084ff";
 
 type Col = {
   key: string;
@@ -90,11 +91,14 @@ export function Lineups({ meta }: { meta: Meta }) {
   const rows = data?.rows ?? [];
   const keyOf = (r: any) =>
     `${r.team_abbr}-${r.players.map((p: any) => p.id).join("-")}`;
-  const togglePick = (r: any) =>
-    setPicked((current) => {
-      const k = keyOf(r);
-      return current.includes(k) ? current.filter((x) => x !== k) : [...current, k];
-    });
+  const { register, reveal } = useRowIndex<string>();
+  const togglePick = (r: any) => {
+    const k = keyOf(r);
+    setPicked((current) =>
+      current.includes(k) ? current.filter((x) => x !== k) : [...current, k]
+    );
+    reveal(k);
+  };
 
   const sorted = useMemo(() => {
     const r = [...rows];
@@ -107,20 +111,28 @@ export function Lineups({ meta }: { meta: Meta }) {
     return r;
   }, [rows, sort]);
 
+  // Split once, because the chart is drawn from these two and a click on it is
+  // resolved back through them. Nothing is named until it is asked for, from
+  // either side — pick a row in the table or click its bubble on the chart.
+  // Eighty fives named at once is unreadable, and hover already covers
+  // browsing.
+  const chosen = useMemo(
+    () => rows.filter((r: any) => picked.includes(keyOf(r))),
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [rows, picked.join(",")]
+  );
+  const unpicked = useMemo(
+    () => (picked.length ? rows.filter((r: any) => !picked.includes(keyOf(r))) : rows),
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [rows, picked.join(",")]
+  );
+
   const traces = useMemo(() => {
     if (!rows.length) return [];
     // Minutes drive the marker area, not its radius: at radius the biggest
     // lineup swallows the chart.
     const maxMin = Math.max(...rows.map((r: any) => r.min));
-    const byNet = [...rows].sort((a: any, b: any) => b.net - a.net);
-    // With nothing picked, label the extremes of the league view by team, the
-    // way the league table does. One team's own lineups all carry the same
-    // abbreviation, so there the marker goes unlabeled and hover names the
-    // five. Once fives are picked, they are the only thing worth labeling.
-    const auto = new Set(team || picked.length ? [] : [...byNet.slice(0, 3), ...byNet.slice(-2)]);
-    const isPicked = (r: any) => picked.includes(keyOf(r));
-    const chosen = rows.filter(isPicked);
-    const rest = picked.length ? rows.filter((r: any) => !isPicked(r)) : rows;
+    const rest = unpicked;
     const markerSize = (r: any) => 8 + 26 * Math.sqrt(r.min / maxMin);
     const hover =
       "<b>%{hovertext}</b><br>%{customdata[0]:.0f} min over %{customdata[2]} games<br>" +
@@ -133,6 +145,9 @@ export function Lineups({ meta }: { meta: Meta }) {
       type: "scatter",
       mode: "markers+text",
       textposition: "top center",
+      // Five surnames beside a bubble at the edge would otherwise be clipped
+      // away entirely rather than spilling into the margin.
+      cliponaxis: false,
       hovertemplate: hover,
     };
     const out: any[] = [
@@ -140,8 +155,8 @@ export function Lineups({ meta }: { meta: Meta }) {
         ...base,
         x: rest.map((r: any) => r.ortg),
         y: rest.map((r: any) => r.drtg),
-        text: rest.map((r: any) => (auto.has(r) ? r.team_abbr : "")),
-        textfont: { size: 10, color: "#8a94a2" },
+        text: rest.map(() => BLANK),
+        textfont: { size: 11 },
         hovertext: rest.map(describe),
         customdata: rest.map(facts),
         marker: {
@@ -169,19 +184,26 @@ export function Lineups({ meta }: { meta: Meta }) {
         text: chosen.map((r: any) =>
           r.players.map((p: any) => surname(p.name)).join(" · ")
         ),
-        textfont: { size: 10, color: PICKED },
+        textfont: { size: 11 },
         hovertext: chosen.map(describe),
         customdata: chosen.map(facts),
         marker: {
           size: chosen.map(markerSize),
-          color: PICKED,
+          // Still colored by net, like the field it was picked out of — a
+          // picked five that played badly should not look like a good one.
+          // The ring and the full opacity are what mark it as picked.
+          color: chosen.map((r: any) => r.net),
+          colorscale: DIVERGING,
+          cmid: 0,
+          showscale: false,
           opacity: 1,
-          line: { color: "#111518", width: 2 },
+          line: { color: PICKED, width: 3 },
         },
       });
     }
     return out;
-  }, [rows, team, picked.join(",")]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [rows, team, picked.join(","), chosen, unpicked]);
 
   const layout = useMemo(
     () => ({
@@ -339,12 +361,12 @@ export function Lineups({ meta }: { meta: Meta }) {
                 {sorted.map((r: any) => (
                   <li
                     key={keyOf(r)}
+                    ref={register(keyOf(r))}
                     onClick={() => togglePick(r)}
                     title="Show this group on the chart"
                     className={cn(
                       "cursor-pointer border-t border-border/60 px-4 py-2.5 transition hover:bg-border/30",
-                      // Matches the chart's pick color, not the accent.
-                      picked.includes(keyOf(r)) && "bg-[#b084ff]/15"
+                      picked.includes(keyOf(r)) && "bg-accent/10"
                     )}
                   >
                     <div className="flex items-center gap-2">
@@ -398,6 +420,13 @@ export function Lineups({ meta }: { meta: Meta }) {
               layout={layout as any}
               height={430}
               placeholder="Nothing clears this minutes floor"
+              // Trace 0 is the field, trace 1 the fives already picked, which
+              // is the same split the traces are built on.
+              onPointClick={(p) => {
+                const from = p.curveNumber === 0 ? unpicked : chosen;
+                const row = from[p.pointIndex];
+                if (row) togglePick(row);
+              }}
             />
           </CardBody>
         </Card>

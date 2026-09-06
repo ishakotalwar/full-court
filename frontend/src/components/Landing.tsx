@@ -26,7 +26,7 @@ export function Landing({ onPick }: { onPick: (mode: "stats" | "predictions") =>
           title="Explore stats"
           blurb="What already happened."
           points={[
-            "Player pages with percentiles, per 36, 75 or 100 possessions",
+            "Player pages with percentiles, per 36 minutes or per 75 and 100 possessions",
             "Five ways to rank impact, rebuilt from every substitution",
             "Five-man lineups, and how a team played without any of them",
             "Shot charts by zone, regular season or playoffs",
