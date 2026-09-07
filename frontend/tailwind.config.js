@@ -17,6 +17,7 @@ export default {
         good: "rgb(var(--c-good) / <alpha-value>)",
         bad: "rgb(var(--c-bad) / <alpha-value>)",
         onAccent: "rgb(var(--c-on-accent) / <alpha-value>)",
+        onAccent2: "rgb(var(--c-on-accent2) / <alpha-value>)",
       },
       fontFamily: {
         sans: [

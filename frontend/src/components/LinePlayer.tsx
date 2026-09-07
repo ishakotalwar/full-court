@@ -113,7 +113,7 @@ function limbLoop(chain: Node[], outer: 1 | -1): string {
   return through(out) + cap(chain[chain.length - 1], chain[chain.length - 2].p) + through(back);
 }
 
-export function LinePlayer() {
+export function LinePlayer({ className }: { className?: string } = {}) {
   const startFar = side(armFar, -1)[0]; // top of the far shoulder
   const armpitFar = side(armFar, 1)[0];
   const armpitNear = side(armNear, -1)[0];
@@ -142,7 +142,7 @@ export function LinePlayer() {
       viewBox="120 50 500 545"
       role="presentation"
       aria-hidden
-      className="mx-auto my-6 h-64 w-auto text-ink"
+      className={className ?? "mx-auto my-6 h-64 w-auto text-ink"}
       fill="none"
       stroke="currentColor"
       strokeWidth={3.2}

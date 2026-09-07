@@ -6,7 +6,9 @@
 /* Secondary text is `--c-mute`. It is deliberately a step stronger than the
    usual "muted grey": at the original values it cleared the accessibility
    floor but still read as washed out at the 11-12px the labels and subtitles
-   use. Every palette's mute now sits near 7:1 against its own panel.
+   use. Every palette's mute now sits near 11:1 against its own panel — most
+   of the way to the ink it sits beside, so it separates the secondary from
+   the primary without reading as washed out.
 
    Palettes come in pairs: each color family has a light and a dark half, and
    the two controls in the header pick along those two axes independently.
@@ -21,11 +23,12 @@
   --c-panel: 18 22 28;
   --c-border: 31 38 48;
   --c-ink: 230 234 240;
-  --c-mute: 163 173 187;
+  --c-mute: 200 207 216;
   --c-accent: 255 106 61;
   --c-accent2: 77 171 255;
   --c-good: 26 152 80;
   --c-bad: 215 48 39;
+  --c-on-accent2: 10 14 20;
   --c-on-accent: 0 0 0;
   --c-grid: 31 38 48;
   --c-axis: 42 50 64;
@@ -37,13 +40,14 @@
   --c-panel: 255 255 255;
   --c-border: 223 228 236;
   --c-ink: 17 24 33;
-  --c-mute: 80 91 106;
+  --c-mute: 45 54 66;
   /* Both accents are darkened from their dark-mode values: the originals are
      tuned for a near-black ground and fail contrast on white. */
   --c-accent: 214 74 30;
   --c-accent2: 24 104 190;
   --c-good: 21 128 68;
   --c-bad: 190 42 32;
+  --c-on-accent2: 255 255 255;
   --c-on-accent: 255 255 255;
   --c-grid: 226 231 238;
   --c-axis: 203 211 222;
@@ -56,11 +60,12 @@
   --c-panel: 255 255 255;
   --c-border: 205 222 231;
   --c-ink: 12 34 46;
-  --c-mute: 72 98 114;
+  --c-mute: 39 63 77;
   --c-accent: 14 116 144;
   --c-accent2: 194 65 12;
   --c-good: 21 128 68;
   --c-bad: 190 42 32;
+  --c-on-accent2: 255 255 255;
   --c-on-accent: 255 255 255;
   --c-grid: 219 232 238;
   --c-axis: 190 209 219;
@@ -72,11 +77,12 @@
   --c-panel: 12 30 43;
   --c-border: 26 51 68;
   --c-ink: 223 236 244;
-  --c-mute: 152 177 194;
+  --c-mute: 191 209 222;
   --c-accent: 34 211 238;
   --c-accent2: 251 146 60;
   --c-good: 34 197 94;
   --c-bad: 248 113 113;
+  --c-on-accent2: 10 14 20;
   --c-on-accent: 3 20 26;
   --c-grid: 26 51 68;
   --c-axis: 38 68 89;
@@ -89,11 +95,12 @@
   --c-panel: 255 255 255;
   --c-border: 214 223 233;
   --c-ink: 15 30 46;
-  --c-mute: 76 91 109;
+  --c-mute: 42 57 74;
   --c-accent: 37 99 235;
   --c-accent2: 13 148 136;
   --c-good: 21 128 68;
   --c-bad: 190 42 32;
+  --c-on-accent2: 10 14 20;
   --c-on-accent: 255 255 255;
   --c-grid: 224 231 239;
   --c-axis: 197 208 220;
@@ -105,11 +112,12 @@
   --c-panel: 19 26 38;
   --c-border: 34 45 62;
   --c-ink: 226 233 242;
-  --c-mute: 158 172 192;
+  --c-mute: 195 206 220;
   --c-accent: 96 165 250;
   --c-accent2: 45 212 191;
   --c-good: 74 222 128;
   --c-bad: 248 113 113;
+  --c-on-accent2: 10 14 20;
   --c-on-accent: 8 14 24;
   --c-grid: 34 45 62;
   --c-axis: 48 62 84;
