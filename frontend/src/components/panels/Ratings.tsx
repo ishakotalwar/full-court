@@ -44,7 +44,7 @@ const SIDES: Col[] = [
 
 /** Metrics built by splitting each possession into an offensive and a
  *  defensive half, and so the only ones with parts to show. */
-const SPLIT_METRICS = ["rapm"];
+const SPLIT_METRICS = ["rapm", "defense"];
 
 /**
  * What to plot beside each metric.

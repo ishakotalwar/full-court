@@ -15,8 +15,10 @@ from __future__ import annotations
 
 import os
 import re
+from functools import lru_cache
 
 from .ask_schema import (
+    IMPACT_ALIASES,
     METRIC_ALIASES,
     PRESET_ALIASES,
     SUPERLATIVE_CATEGORIES,
@@ -39,6 +41,22 @@ RANKING_MIN_GP = 15
 FRACTION_METRICS = {"fg_pct", "three_pct", "ft_pct", "ts_pct", "usg_pct"}
 
 _TEAM_WORDS = re.compile(r"\bteams?\b|\bfranchises?\b", re.I)
+# Hollinger's rating, but only where "per" is the noun and not the preposition
+# in a rate — "points per game", "per 100 possessions".
+_PER_GUARD = r"|\bper\b(?!\s*(?:game|36|75|100|minute|min|poss|possession))"
+
+# The three boards the possession data can answer for, which the box score
+# cannot: who moved the needle, which fives did it together, and what a team
+# looked like without someone.
+_IMPACT_WORDS = re.compile(
+    r"\bimpact\b|\brapm\b|\bplus[- ]?minus\b|\bon[-/ ]?off\b"
+    r"|\bmost valuable\b|\bbest defend(?:er|ers)\b|\bdefensive impact\b"
+    + _PER_GUARD, re.I)
+_LINEUP_WORDS = re.compile(
+    r"\blineups?\b|\bfive[- ]?man\b|\b5[- ]?man\b|\bunits?\b|\bcombinations?\b", re.I)
+_WOWY_WORDS = re.compile(
+    r"\bwowy\b|\bwithout\b|\bwhen .{1,30} sat\b|\bon the bench\b", re.I)
+_GROUP_SIZE = re.compile(r"\b([2-5])[- ]?(?:man|player)\b", re.I)
 _SIMILAR_WORDS = re.compile(r"\bsimilar\b|\blike\b|\bcomparable\b|\breminiscent\b", re.I)
 _COMPARE_WORDS = re.compile(r"\bcompare\b|\bversus\b|\bvs\.?\b|\bagainst\b|\bside by side\b", re.I)
 _SHOT_WORDS = re.compile(
@@ -211,6 +229,67 @@ def _ranking_metric(q: str) -> tuple[str | None, str | None]:
     return None, None
 
 
+def _impact_metric(q: str) -> str | None:
+    """Which of the impact boards a question is asking for, longest phrase
+    first so "defensive impact" is not read as bare "impact"."""
+    # "on/off" is written with a slash as often as a dash, so the separator is
+    # flattened before the aliases — which are all spaced — are tried.
+    low = re.sub(r"[/_-]", " ", q.lower())
+    for phrase in sorted(IMPACT_ALIASES, key=len, reverse=True):
+        pattern = rf"\b{re.escape(phrase)}\b"
+        if phrase == "per":
+            pattern += r"(?!\s*(?:game|36|75|100|minute|min|poss|possession))"
+        if re.search(pattern, low):
+            return IMPACT_ALIASES[phrase]
+    return None
+
+
+@lru_cache(maxsize=4)
+def _team_words() -> dict[str, str]:
+    """Word -> team name, for every word that belongs to exactly one franchise.
+
+    "Nuggets" and "Denver" both identify one team, so both are kept. "Los" and
+    "Angeles" identify two, so neither is — a question naming only the city
+    there is genuinely ambiguous and is better left unmatched than guessed.
+    """
+    from .data import teams as _teams  # local: avoids a cycle at import time
+    from .leagues import LEAGUES, get
+
+    owners: dict[str, set[str]] = {}
+    for key in LEAGUES:
+        try:
+            names = _teams(get(key))["team_name"].dropna().unique()
+        except Exception:
+            continue
+        for name in names:
+            for word in str(name).lower().split():
+                if len(word) > 2:
+                    owners.setdefault(word, set()).add(str(name))
+    return {word: next(iter(who)) for word, who in owners.items() if len(who) == 1}
+
+
+def _named_team(q: str) -> str | None:
+    """The franchise a question names, by full name or by any word unique to
+    it."""
+    from .data import teams as _teams
+    from .leagues import LEAGUES, get
+
+    low = q.lower()
+    for key in LEAGUES:
+        try:
+            names = _teams(get(key))["team_name"].dropna().unique()
+        except Exception:
+            continue
+        for name in names:
+            if re.search(rf"\b{re.escape(str(name).lower())}\b", low):
+                return str(name)
+    words = _team_words()
+    for word in re.findall(r"[a-z]+", low):
+        if word in words:
+            return words[word]
+    return None
+
+
 def _team_metric(q: str) -> str | None:
     low = q.lower()
     best: tuple[int, str] | None = None
@@ -265,6 +344,43 @@ def parse_rules(question: str, league: str | None = None) -> AskQuery | None:
     # Comparison: "compare 2016 Curry and 2024 Luka"
     if _COMPARE_WORDS.search(q) and len(refs) >= 2:
         return AskQuery(intent="compare", league=lg, players=refs[:5])
+
+    # WOWY: "how did Denver play without Jokic", "Nuggets with and without Murray"
+    if _WOWY_WORDS.search(q):
+        team = _named_team(q)
+        who = refs or _bare_names(q, season_from or season_to)
+        if team:
+            # "how did Denver play without Jokic" names one team and one
+            # player; without this the city is resolved as a player too.
+            owned = {w.lower() for w in team.split()}
+            who = [r for r in who
+                   if not set(r.player.lower().split()) & owned]
+        if team or who:
+            return AskQuery(
+                intent="wowy", league=lg, team=team,
+                players=[PlayerRef(player=r.player, season=None) for r in who[:4]],
+                season_to=season_to or season_from,
+            )
+
+    # Lineups: "best five-man lineups for the Celtics in 2025"
+    if _LINEUP_WORDS.search(q):
+        size = _GROUP_SIZE.search(q)
+        return AskQuery(
+            intent="lineups", league=lg, team=_named_team(q),
+            season_to=season_to or season_from,
+            group_size=int(size.group(1)) if size else 5,
+            dir="asc" if _ASCENDING.search(q) else "desc", limit=10,
+        )
+
+    # Impact: "who had the highest RAPM in 2025", "best defenders", "top on/off"
+    if _IMPACT_WORDS.search(q) and not _SIMILAR_WORDS.search(q):
+        metric = _impact_metric(q)
+        if metric:
+            return AskQuery(
+                intent="impact", league=lg, metric=metric,
+                season_to=season_to or season_from,
+                dir="asc" if _ASCENDING.search(q) else "desc", limit=10,
+            )
 
     # Leaderboards: "best WNBA defensive players", "top scorers since 2015".
     # Checked before conditions so "most points" doesn't fall through as noise,

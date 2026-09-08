@@ -1,9 +1,13 @@
-"""Query historical player-seasons.
+"""Query historical player-seasons, or team-seasons.
 
 Answers questions of the shape "which player-seasons since 2003 averaged 25+
 points while shooting 40%+ from three", with arbitrary filter stacks, sorting
 and pagination over the whole dataset.
-"""
+
+`subject` picks what a row is. Teams are the same machinery over a different
+frame: the filter, sort and paging code below never asks which one it has, so
+a condition means the same thing on either.
+""" 
 from __future__ import annotations
 
 import pandas as pd
@@ -11,6 +15,7 @@ from fastapi import APIRouter, HTTPException
 from pydantic import BaseModel
 
 from .. import analytics, data, leagues
+from .teams import _enrich
 
 router = APIRouter(prefix="/api", tags=["explorer"])
 
@@ -26,6 +31,7 @@ class Filter(BaseModel):
 
 
 class ExplorerRequest(BaseModel):
+    subject: str = "players"
     league: str | None = None
     season_from: str | None = None
     season_to: str | None = None
@@ -43,15 +49,41 @@ class ExplorerRequest(BaseModel):
     page_size: int = 25
 
 
+# What a team-season can be filtered and sorted on, in the order a table
+# should show them. Everything here comes out of `_enrich`.
+TEAM_METRICS = ["wins", "losses", "win_pct", "net", "ortg", "drtg", "pace",
+                "eFG%", "TOV%", "ORB%", "FT rate"]
+
+
+def _team_frame(lg) -> pd.DataFrame:
+    """Team-seasons with the derived rates every team ranking uses."""
+    return _enrich(data.teams(lg).copy())
+
+
 @router.get("/explorer/fields")
-def fields(league: str | None = None):
+def fields(league: str | None = None, subject: str = "players"):
     """What can be filtered and sorted on, for this league's data."""
     lg = leagues.get(league)
+    if subject == "teams":
+        df = _team_frame(lg)
+        return {
+            "league": lg.key,
+            "subject": "teams",
+            "metrics": [m for m in TEAM_METRICS if m in df.columns],
+            # A team's totals are what they are; there is no per-36 team.
+            "rate_bases": {},
+            "numeric_fields": [c for c in df.columns
+                               if pd.api.types.is_numeric_dtype(df[c])],
+            "seasons": data.seasons(lg),
+            "teams": sorted(df["team_name"].dropna().unique().tolist()),
+            "operators": sorted(OPS),
+        }
     df = data.players(lg)
     numeric = [c for c in df.columns
                if c not in ("player_id", "team_id") and pd.api.types.is_numeric_dtype(df[c])]
     return {
         "league": lg.key,
+        "subject": "players",
         "metrics": data.available_metrics(lg),
         "rate_bases": data.RATE_BASES,
         "numeric_fields": numeric,
@@ -64,10 +96,14 @@ def fields(league: str | None = None):
 @router.post("/explorer")
 def explorer(req: ExplorerRequest):
     lg = leagues.get(req.league)
-    if req.per not in data.RATE_BASES:
-        raise HTTPException(400, f"Unknown rate basis {req.per!r}. Expected one of: "
-                                 f"{', '.join(data.RATE_BASES)}")
-    df = data.players_at(req.per, lg).copy()
+    teams_mode = req.subject == "teams"
+    if teams_mode:
+        df = _team_frame(lg)
+    else:
+        if req.per not in data.RATE_BASES:
+            raise HTTPException(400, f"Unknown rate basis {req.per!r}. Expected one of: "
+                                     f"{', '.join(data.RATE_BASES)}")
+        df = data.players_at(req.per, lg).copy()
 
     if req.season_from:
         df = df[df["season"] >= str(req.season_from)]
@@ -77,9 +113,13 @@ def explorer(req: ExplorerRequest):
         df = df[pd.to_numeric(df["gp"], errors="coerce").fillna(0) >= req.min_gp]
     if req.min_min and "min" in df.columns:
         df = df[pd.to_numeric(df["min"], errors="coerce").fillna(0) >= req.min_min]
-    if req.team and "team_abbr" in df.columns:
-        df = df[df["team_abbr"] == req.team]
-    if req.player:
+    if req.team:
+        # A team is named by abbreviation on a player row and in full on a
+        # team row, so match on whichever column this frame carries.
+        column = "team_name" if teams_mode else "team_abbr"
+        if column in df.columns:
+            df = df[df[column] == req.team]
+    if req.player and "player_name" in df.columns:
         df = df[df["player_name"].str.contains(req.player, case=False, na=False)]
 
     for f in req.filters:
@@ -104,7 +144,8 @@ def explorer(req: ExplorerRequest):
             df = df[col.between(lo, hi)]
 
     total = int(len(df))
-    sort_key = req.sort if req.sort in df.columns else "pts"
+    fallback = "net" if teams_mode else "pts"
+    sort_key = req.sort if req.sort in df.columns else fallback
     if sort_key in df.columns:
         df = df.sort_values(
             sort_key, ascending=(req.dir == "asc"), na_position="last", kind="mergesort"
@@ -115,9 +156,13 @@ def explorer(req: ExplorerRequest):
     start = (page - 1) * page_size
     rows = df.iloc[start : start + page_size]
 
-    cols = ["player_id", "player_name", "season", "team_abbr", "gp", "min"] + [
-        m for m in data.available_metrics(lg) if m in df.columns
-    ]
+    if teams_mode:
+        cols = ["team_name", "season", "games"] + [m for m in TEAM_METRICS
+                                                   if m in df.columns]
+    else:
+        cols = ["player_id", "player_name", "season", "team_abbr", "gp", "min"] + [
+            m for m in data.available_metrics(lg) if m in df.columns
+        ]
     seen, ordered = set(), []
     for c in cols:
         if c in rows.columns and c not in seen:
@@ -125,6 +170,7 @@ def explorer(req: ExplorerRequest):
             seen.add(c)
 
     return analytics.json_safe({
+        "subject": "teams" if teams_mode else "players",
         "total": total,
         "page": page,
         "page_size": page_size,

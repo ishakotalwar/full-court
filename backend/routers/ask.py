@@ -24,6 +24,7 @@ from ..ask_schema import (
     PlayerRef,
 )
 from . import compare as compare_router
+from . import players as players_router
 from . import explorer as explorer_router
 from . import shots as shots_router
 from . import similarity as similarity_router
@@ -377,6 +378,122 @@ def _run_team_explorer(query: AskQuery, lg) -> dict:
     }
 
 
+def _latest(seasons: list[str], wanted: str | None) -> str | None:
+    """The season asked for if it exists, otherwise the most recent one."""
+    if wanted and str(wanted) in seasons:
+        return str(wanted)
+    return seasons[-1] if seasons else None
+
+
+def _run_impact(query: AskQuery, lg) -> dict:
+    """A ranking off the Impact page, which the box score cannot produce: it
+    needs the stints, and the stints only exist for the seasons the lineup ETL
+    has rebuilt."""
+    metric = query.metric if query.metric in data.IMPACT_METRICS else "rapm"
+    seasons = data.rating_seasons(lg, "regular")
+    season = _latest(seasons, query.season_to or query.season_from)
+    if not season:
+        return _fail(f"I don't have impact ratings for the {lg.label} yet.")
+
+    board = data.IMPACT_METRICS[metric]
+    out = players_router.player_ratings(season=season, league=lg.key, metric=metric,
+                                        limit=max(query.limit, 10))
+    rows = out.get("rows", [])
+    if query.dir == "asc":
+        rows = list(reversed(rows))
+    rows = rows[:min(query.limit, 25)]
+
+    asked = query.season_to or query.season_from
+    missing = (f" I don't have {lg.display_season(asked)}, so this is "
+               f"{lg.display_season(season)}." if asked and str(asked) != season else "")
+    return {
+        "status": "ok",
+        "summary": (f"{'Lowest' if query.dir == 'asc' else 'Best'} {len(rows)} "
+                    f"{lg.label} players by {board['label']}, "
+                    f"{lg.display_season(season)}.{missing}"),
+        "results": rows,
+        "metric": board["column"],
+        "note": query.note or board["blurb"],
+        "target_page": "impact",
+        "navigate": {"page": "impact",
+                     "state": {"metric": metric, "season": season, "league": lg.key}},
+    }
+
+
+def _run_lineups(query: AskQuery, lg) -> dict:
+    """The best groups of five — or of two, three or four — a team put on the
+    floor, rebuilt from substitutions."""
+    seasons = data.lineup_seasons(lg)
+    season = _latest(seasons, query.season_to or query.season_from)
+    if not season:
+        return _fail(f"I don't have rebuilt lineups for the {lg.label} yet.")
+
+    size = query.group_size if query.group_size in (2, 3, 4, 5) else 5
+    out = teams_router.team_lineups(season=season, league=lg.key, team=query.team,
+                                    size=size, limit=max(query.limit, 10))
+    # The endpoint orders by minutes, which answers "who played together most"
+    # rather than the question actually asked.
+    rows = sorted(out.get("rows", []),
+                  key=lambda r: (r.get("net") is not None, r.get("net") or 0),
+                  reverse=query.dir != "asc")
+    rows = rows[:min(query.limit, 25)]
+    if not rows:
+        where = f" for the {query.team}" if query.team else ""
+        return _fail(f"No {size}-player groups{where} cleared the minutes floor "
+                     f"in {lg.display_season(season)}.")
+
+    who = f"{query.team} " if query.team else ""
+    return {
+        "status": "ok",
+        "summary": (f"{'Worst' if query.dir == 'asc' else 'Best'} {who}groups of "
+                    f"{size} by net rating, {lg.display_season(season)}."),
+        "results": rows,
+        "metric": "net",
+        "target_page": "lineups",
+        "navigate": {"page": "lineups",
+                     "state": {"season": season, "team": query.team, "size": size,
+                               "league": lg.key}},
+    }
+
+
+def _run_wowy(query: AskQuery, lg, resolved: list[dict]) -> dict:
+    """What a team did with a group on the floor, and what it did without."""
+    seasons = data.lineup_seasons(lg)
+    season = _latest(seasons, query.season_to or query.season_from)
+    if not season:
+        return _fail(f"I don't have rebuilt lineups for the {lg.label} yet.")
+
+    team = query.team
+    ids = [str(w["player_id"]) for w in resolved]
+    # A player names their own team, so "without Jokic" needs no "Denver".
+    if not team and resolved:
+        team = resolved[0].get("team_name")
+    if not team:
+        return _fail("Tell me which team — for example “how did Denver play "
+                     "without Jokic”.")
+    if not ids:
+        return _fail("Tell me which player to split on.")
+
+    out = teams_router.team_wowy(season=season, team=team, league=lg.key,
+                                 players=",".join(ids))
+    rows = out.get("rows", [])
+    if not rows:
+        return _fail(f"I couldn't split {team}'s {lg.display_season(season)} that way.")
+
+    names = " and ".join(w["player_name"] for w in resolved)
+    return {
+        "status": "ok",
+        "summary": f"{team} with and without {names}, {lg.display_season(season)}.",
+        "results": rows,
+        "metric": "net",
+        "target_page": "wowy",
+        "navigate": {"page": "wowy",
+                     "state": {"season": season, "team": team,
+                               "players": [w["player_id"] for w in resolved],
+                               "league": lg.key}},
+    }
+
+
 # --------------------------------------------------------------------------
 # Endpoint
 # --------------------------------------------------------------------------
@@ -390,6 +507,7 @@ def capabilities(league: str | None = None):
         "metrics": data.available_metrics(lg),
         "team_metrics": sorted(set(TEAM_METRIC_ALIASES.values())),
         "presets": list(similarity_router.PRESETS),
+        "impact_metrics": {k: v["label"] for k, v in data.IMPACT_METRICS.items()},
         "llm_parser": llm_available(),
         "examples": [
             "Which NBA players since 2010 averaged at least 25 points per game?",
@@ -402,6 +520,11 @@ def capabilities(league: str | None = None):
             "Show WNBA players since 2020 who shot at least 40% from three.",
             "Best WNBA defensive players",
             "Who are the best rim protectors?",
+            "Who had the highest RAPM in 2026?",
+            "Top on/off players this season",
+            "Best five-man lineups for the Celtics",
+            "Best 3-man lineups for the Nuggets",
+            "How did Denver play without Jokic?",
         ],
     }
 
@@ -458,6 +581,12 @@ def ask(req: AskRequest):
         if not resolved:
             return _fail("Tell me whose shots to look at.")
         result = _run_shots(query, lg, resolved[0])
+    elif query.intent == "impact":
+        result = _run_impact(query, lg)
+    elif query.intent == "lineups":
+        result = _run_lineups(query, lg)
+    elif query.intent == "wowy":
+        result = _run_wowy(query, lg, resolved)
     else:
         result = _run_team_explorer(query, lg)
 

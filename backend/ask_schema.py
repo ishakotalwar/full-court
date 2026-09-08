@@ -11,7 +11,8 @@ from typing import Literal
 
 from pydantic import BaseModel, Field
 
-INTENTS = ("explorer", "similarity", "compare", "shot_analysis", "team_explorer")
+INTENTS = ("explorer", "similarity", "compare", "shot_analysis", "team_explorer",
+           "impact", "lineups", "wowy")
 OPERATORS = (">", ">=", "<", "<=", "=", "between")
 
 # Natural language -> the canonical column names in backend/data.py. The values
@@ -42,9 +43,22 @@ METRIC_ALIASES: dict[str, str] = {
     "usg_pct": "usg_pct",
     "offensive rating": "ortg", "ortg": "ortg",
     "defensive rating": "drtg", "drtg": "drtg",
-    # How people describe a role rather than name a column.
-    "rim protector": "blk", "rim protectors": "blk", "rim protection": "blk",
-    "shot blocker": "blk", "shot blockers": "blk", "shot blocking": "blk",
+    # Per-possession defence, from the play-by-play detail. These are rates
+    # against possessions actually defended, which is what makes them
+    # comparable between a starter and a reserve.
+    "blocks per 100": "blk_100", "blocks per possession": "blk_100",
+    "rim blocks": "blk_rim_100", "rim blocks per 100": "blk_rim_100",
+    "blocks at the rim": "blk_rim_100",
+    "steals per 100": "stl_100", "steals per possession": "stl_100",
+    "fouls per 100": "foul_100", "fouls": "foul_100", "fouling": "foul_100",
+    "on court defensive rating": "on_def_rtg", "on-court defensive rating": "on_def_rtg",
+    "points allowed": "on_def_rtg",
+    # How people describe a role rather than name a column. Rim protection and
+    # ball pressure now reach the per-possession versions rather than the
+    # per-game counts they used to settle for.
+    "rim protector": "blk_rim_100", "rim protectors": "blk_rim_100",
+    "rim protection": "blk_rim_100",
+    "shot blocker": "blk_100", "shot blockers": "blk_100", "shot blocking": "blk_100",
     "floor general": "ast", "floor generals": "ast", "playmaker": "ast",
     "playmakers": "ast", "passer": "ast", "passers": "ast",
     "distributor": "ast", "distributors": "ast",
@@ -55,7 +69,7 @@ METRIC_ALIASES: dict[str, str] = {
     "three-point shooter": "three_pct", "three-point shooters": "three_pct",
     "scorer": "pts", "scorers": "pts", "bucket getter": "pts",
     "rebounder": "reb", "rebounders": "reb", "glass cleaner": "reb",
-    "ball hawk": "stl", "ball hawks": "stl", "thief": "stl",
+    "ball hawk": "stl_100", "ball hawks": "stl_100", "thief": "stl_100",
     "free throw shooter": "ft_pct", "free throw shooters": "ft_pct",
 }
 
@@ -64,12 +78,12 @@ METRIC_ALIASES: dict[str, str] = {
 # resolve when the question is explicitly asking for a ranking, and the answer
 # always says which single metric it ranked on.
 SUPERLATIVE_CATEGORIES: dict[str, tuple[str, str | None]] = {
-    "defensive": ("blk", "Full Court has no per-player defensive rating, so this "
-                         "ranks on blocks — ask for steals for perimeter defense."),
-    "defense": ("blk", "Full Court has no per-player defensive rating, so this "
-                       "ranks on blocks — ask for steals for perimeter defense."),
-    "defenders": ("blk", "Full Court has no per-player defensive rating, so this "
-                         "ranks on blocks — ask for steals for perimeter defense."),
+    # Defence used to fall back to blocks per game with an apology attached.
+    # There is a defensive fit to rank on now, so these route to the impact
+    # board instead — see IMPACT_WORDS in ask_parse.
+    "defensive": ("blk_rim_100", None),
+    "defense": ("blk_rim_100", None),
+    "defenders": ("blk_rim_100", None),
     "offensive": ("pts", None),
     "scoring": ("pts", None),
     "shooting": ("ts_pct", None),
@@ -104,6 +118,22 @@ TEAM_METRIC_ALIASES: dict[str, str] = {
     "record": "win_pct",
 }
 
+# Natural language -> a key in data.IMPACT_METRICS. "Impact" on its own means
+# the single-season fit, which is what the Impact page opens on.
+IMPACT_ALIASES: dict[str, str] = {
+    "impact": "rapm", "rapm": "rapm", "plus minus": "rapm",
+    "adjusted plus minus": "rapm", "value": "rapm",
+    "three year rapm": "rapm_window", "3 year rapm": "rapm_window",
+    "rolling rapm": "rapm_window", "multi year impact": "rapm_window",
+    "box prior": "rapm_prior", "box-prior": "rapm_prior",
+    "box prior rapm": "rapm_prior", "regressed impact": "rapm_prior",
+    "per": "per", "player efficiency rating": "per", "hollinger": "per",
+    "on off": "on_off", "on-off": "on_off", "on off split": "on_off",
+    "defensive impact": "defense", "defensive rapm": "defense",
+    "best defender": "defense", "best defenders": "defense",
+    "defensive player": "defense", "defensive players": "defense",
+}
+
 # The similarity router keys its presets with capitals; users won't type them.
 PRESET_ALIASES: dict[str, str] = {
     "overall": "Overall", "scoring": "Scoring", "shooting": "Shooting",
@@ -128,7 +158,8 @@ class PlayerRef(BaseModel):
 
 class AskQuery(BaseModel):
     """The validated request an /api/ask answer is computed from."""
-    intent: Literal["explorer", "similarity", "compare", "shot_analysis", "team_explorer"]
+    intent: Literal["explorer", "similarity", "compare", "shot_analysis",
+                    "team_explorer", "impact", "lineups", "wowy"]
     league: str | None = None
     season_from: str | None = None
     season_to: str | None = None
@@ -141,6 +172,8 @@ class AskQuery(BaseModel):
     limit: int = 20
     min_gp: int = Field(default=0, description="Games played floor, used by rankings")
     note: str | None = Field(default=None, description="Caveat to show with the answer")
+    team: str | None = Field(default=None, description="Team name, for lineup and WOWY questions")
+    group_size: int | None = Field(default=None, description="Players per lineup, 2-5")
 
 
 class AskRequest(BaseModel):

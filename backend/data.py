@@ -78,6 +78,13 @@ IMPACT_METRICS = {
                  "average is 15. Sees no possessions and no defense beyond "
                  "steals and blocks.",
     },
+    "defense": {
+        "label": "Defense",
+        "column": "def_rating",
+        "blurb": "The defensive half of the possession fit on its own: the points "
+                 "a player keeps off the board per 100, with the other nine "
+                 "regressed out. Positive is good, as on offense.",
+    },
     "on_off": {
         "label": "On/off",
         "column": "on_off",

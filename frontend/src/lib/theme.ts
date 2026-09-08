@@ -155,6 +155,17 @@ export function themeColor(name: string, fallback = "#888"): string {
   return raw ? `rgb(${raw})` : fallback;
 }
 
+/** The same token, translucent. The variables hold bare `r g b` channels, so a
+ *  chart can ask for a reference line that sits under its data rather than a
+ *  second solid color competing with it. */
+export function themeAlpha(name: string, alpha: number, fallback = "rgba(136,136,136,0.3)"): string {
+  if (typeof document === "undefined") return fallback;
+  const raw = getComputedStyle(document.documentElement)
+    .getPropertyValue(`--c-${name}`)
+    .trim();
+  return raw ? `rgba(${raw.split(/\s+/).join(", ")}, ${alpha})` : fallback;
+}
+
 /** Applied once at startup; index.html also sets it before first paint so the
  *  page never flashes the wrong theme. */
 export function initTheme() {

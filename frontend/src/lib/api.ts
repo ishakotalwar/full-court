@@ -176,8 +176,8 @@ export const api = {
   teamSeries: (team: string, league: LeagueKey) =>
     fetch(`${BASE}/teams/series?${q_(league, { team })}`).then((r) => j<any>(r)),
 
-  explorerFields: (league: LeagueKey) =>
-    fetch(`${BASE}/explorer/fields?${q_(league)}`).then((r) => j<any>(r)),
+  explorerFields: (league: LeagueKey, subject = "players") =>
+    fetch(`${BASE}/explorer/fields?${q_(league, { subject })}`).then((r) => j<any>(r)),
 
   explorer: (body: any) =>
     fetch(`${BASE}/explorer`, {

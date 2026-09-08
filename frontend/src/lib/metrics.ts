@@ -5,7 +5,7 @@
  */
 export type MetricCategory = "scoring" | "shooting" | "playmaking" | "rebounding" | "defense" | "efficiency" | "usage";
 
-export type MetricFormat = "decimal" | "percent" | "rating" | "integer";
+export type MetricFormat = "decimal" | "percent" | "rating" | "integer" | "rate3";
 
 export type MetricDef = {
   key: string;
@@ -43,6 +43,18 @@ export const METRICS: MetricDef[] = [
   { key: "stl_100", label: "Steals per 100", shortLabel: "STL/100", format: "decimal", category: "defense", higherIsBetter: true, description: "Steals per 100 possessions defended" },
   { key: "foul_100", label: "Fouls per 100", shortLabel: "FOUL/100", format: "decimal", category: "defense", higherIsBetter: false, description: "Fouls committed per 100 possessions defended — the cost of defending, fewer is better" },
   { key: "on_def_rtg", label: "On-court defensive rating", shortLabel: "On DRtg", format: "rating", category: "defense", higherIsBetter: false, description: "Points the team allowed per 100 possessions with this player on the floor — lower is better" },
+  // Team-season columns, for the Explorer's teams subject. The four factors
+  // and win percentage read as three-decimal rates everywhere else in the app
+  // (Team compare, the matchup page), so they read that way here too.
+  { key: "wins", label: "Wins", shortLabel: "W", format: "integer", category: "efficiency", higherIsBetter: true },
+  { key: "losses", label: "Losses", shortLabel: "L", format: "integer", category: "efficiency", higherIsBetter: false },
+  { key: "games", label: "Games", shortLabel: "G", format: "integer", category: "usage", higherIsBetter: true },
+  { key: "win_pct", label: "Win %", shortLabel: "W%", format: "rate3", category: "efficiency", higherIsBetter: true },
+  { key: "net", label: "Net rating", shortLabel: "Net", format: "rating", category: "efficiency", higherIsBetter: true, description: "Points outscored by per 100 possessions" },
+  { key: "eFG%", label: "Effective FG%", shortLabel: "eFG%", format: "rate3", category: "shooting", higherIsBetter: true, description: "Field goal percentage counting a three as a shot and a half" },
+  { key: "TOV%", label: "Turnover rate", shortLabel: "TOV%", format: "rate3", category: "playmaking", higherIsBetter: false, description: "Share of possessions ending in a turnover — lower is better" },
+  { key: "ORB%", label: "Offensive rebound rate", shortLabel: "ORB%", format: "rate3", category: "rebounding", higherIsBetter: true, description: "Share of available offensive rebounds collected" },
+  { key: "FT rate", label: "Free throw rate", shortLabel: "FT rate", format: "rate3", category: "scoring", higherIsBetter: true, description: "Free throws attempted per field goal attempt" },
 ];
 
 const BY_KEY = new Map(METRICS.map((m) => [m.key, m]));
@@ -73,6 +85,9 @@ export function formatValue(key: string, v: number | null | undefined): string {
       return `${(v * 100).toFixed(1)}%`;
     case "rating":
       return v.toFixed(1);
+    case "rate3":
+      // A rate that is conventionally read as .548 rather than 54.8%.
+      return v.toFixed(3);
     case "integer":
       return String(Math.round(v));
     default:
