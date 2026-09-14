@@ -22,7 +22,16 @@ const VIEWS = [
  * that team put on the floor, and the all-time leaderboards. Four views of the
  * same subject, so they switch inside the page rather than costing four tabs.
  */
-export function TeamsSection({ meta, view }: { meta: Meta; view?: string }) {
+export function TeamsSection({
+  meta,
+  view,
+  seedFor,
+}: {
+  meta: Meta;
+  view?: string;
+  /** The structured query Ask Full Court last ran, for the page it points at. */
+  seedFor: (page: string) => any;
+}) {
   const [active, setActive] = useState<string>(view ?? "league");
   useEffect(() => {
     if (view) setActive(view);
@@ -34,8 +43,8 @@ export function TeamsSection({ meta, view }: { meta: Meta; view?: string }) {
       {active === "league" && <TeamCompare meta={meta} />}
       {active === "team" && <Teams meta={meta} />}
       {active === "compare" && <TeamMatchup meta={meta} />}
-      {active === "lineups" && <Lineups meta={meta} />}
-      {active === "wowy" && <Wowy meta={meta} />}
+      {active === "lineups" && <Lineups meta={meta} seed={seedFor("lineups")} />}
+      {active === "wowy" && <Wowy meta={meta} seed={seedFor("wowy")} />}
       {active === "leaders" && <TeamRankings meta={meta} />}
     </div>
   );

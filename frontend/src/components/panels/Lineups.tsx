@@ -54,7 +54,9 @@ const surname = (name: string) => name.trim().split(/\s+/).slice(1).join(" ") ||
  * rebuilt from substitutions in `etl/lineup_etl.py`; the ratings are on the
  * same per-100-possessions scale as team ORtg and DRtg elsewhere.
  */
-export function Lineups({ meta }: { meta: Meta }) {
+/** `seed` arrives from Ask Full Court: the season, team and group size behind
+ *  the answer it just showed. */
+export function Lineups({ meta, seed }: { meta: Meta; seed?: any }) {
   const lineupSeasons = meta.lineup_seasons ?? [];
   const [season, setSeason] = useState(lineupSeasons.at(-1) ?? "");
   const [team, setTeam] = useState<string>(ALL_TEAMS);
@@ -68,6 +70,13 @@ export function Lineups({ meta }: { meta: Meta }) {
   // Which fives are pinned onto the chart. Keyed by the five itself so the
   // selection survives re-sorting and re-fetching.
   const [picked, setPicked] = useState<string[]>([]);
+
+  useEffect(() => {
+    if (!seed) return;
+    if (seed.season) setSeason(String(seed.season));
+    setTeam(seed.team ? String(seed.team) : ALL_TEAMS);
+    if ([2, 3, 4, 5].includes(seed.size)) setSize(seed.size);
+  }, [seed]);
 
   // A team's whole rotation is a few dozen lineups; the league's is thousands,
   // so the league view needs a higher bar to stay a list a person can read.

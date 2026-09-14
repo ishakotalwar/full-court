@@ -244,8 +244,8 @@ def _impact_metric(q: str) -> str | None:
     return None
 
 
-@lru_cache(maxsize=4)
-def _team_words() -> dict[str, str]:
+@lru_cache(maxsize=8)
+def _team_words(league: str | None = None) -> dict[str, str]:
     """Word -> team name, for every word that belongs to exactly one franchise.
 
     "Nuggets" and "Denver" both identify one team, so both are kept. "Los" and
@@ -256,7 +256,11 @@ def _team_words() -> dict[str, str]:
     from .leagues import LEAGUES, get
 
     owners: dict[str, set[str]] = {}
-    for key in LEAGUES:
+    # Scoped to the league being asked about when there is one. Pooled, the two
+    # leagues collide on shared home towns — "Indiana" is the Pacers and the
+    # Fever, and a question inside one league would lose a word that is
+    # perfectly unambiguous there.
+    for key in ([league] if league in LEAGUES else LEAGUES):
         try:
             names = _teams(get(key))["team_name"].dropna().unique()
         except Exception:
@@ -268,14 +272,14 @@ def _team_words() -> dict[str, str]:
     return {word: next(iter(who)) for word, who in owners.items() if len(who) == 1}
 
 
-def _named_team(q: str) -> str | None:
+def _named_team(q: str, league: str | None = None) -> str | None:
     """The franchise a question names, by full name or by any word unique to
-    it."""
+    it. Scoped to `league` when the question is being asked inside one."""
     from .data import teams as _teams
     from .leagues import LEAGUES, get
 
     low = q.lower()
-    for key in LEAGUES:
+    for key in ([league] if league in LEAGUES else LEAGUES):
         try:
             names = _teams(get(key))["team_name"].dropna().unique()
         except Exception:
@@ -283,7 +287,7 @@ def _named_team(q: str) -> str | None:
         for name in names:
             if re.search(rf"\b{re.escape(str(name).lower())}\b", low):
                 return str(name)
-    words = _team_words()
+    words = _team_words(league)
     for word in re.findall(r"[a-z]+", low):
         if word in words:
             return words[word]
@@ -341,13 +345,23 @@ def parse_rules(question: str, league: str | None = None) -> AskQuery | None:
                 preset=_preset(q) or "Overall", limit=10,
             )
 
-    # Comparison: "compare 2016 Curry and 2024 Luka"
-    if _COMPARE_WORDS.search(q) and len(refs) >= 2:
-        return AskQuery(intent="compare", league=lg, players=refs[:5])
+    # Comparison: "compare 2016 Curry and 2024 Luka", or two bare names — a
+    # question that skips the years means both players' latest, the same
+    # fallback similarity and shot questions already take.
+    if _COMPARE_WORDS.search(q):
+        who = list(refs)
+        if len(who) < 2:
+            # Only the names nobody gave a year to, so "2016 Curry and Durant"
+            # keeps Curry's season and gives Durant his latest.
+            named = {r.player.lower() for r in who}
+            who += [b for b in _bare_names(q, season_from or season_to)
+                    if b.player.lower() not in named]
+        if len(who) >= 2:
+            return AskQuery(intent="compare", league=lg, players=who[:5])
 
     # WOWY: "how did Denver play without Jokic", "Nuggets with and without Murray"
     if _WOWY_WORDS.search(q):
-        team = _named_team(q)
+        team = _named_team(q, lg)
         who = refs or _bare_names(q, season_from or season_to)
         if team:
             # "how did Denver play without Jokic" names one team and one
@@ -366,7 +380,7 @@ def parse_rules(question: str, league: str | None = None) -> AskQuery | None:
     if _LINEUP_WORDS.search(q):
         size = _GROUP_SIZE.search(q)
         return AskQuery(
-            intent="lineups", league=lg, team=_named_team(q),
+            intent="lineups", league=lg, team=_named_team(q, lg),
             season_to=season_to or season_from,
             group_size=int(size.group(1)) if size else 5,
             dir="asc" if _ASCENDING.search(q) else "desc", limit=10,
@@ -410,9 +424,17 @@ def parse_rules(question: str, league: str | None = None) -> AskQuery | None:
 
 def _bare_names(q: str, season: str | None) -> list[PlayerRef]:
     """Capitalised runs that look like a name, for questions with no inline year."""
+    # A capital at the head of a question is just a capital. Every word here
+    # is one English opens a basketball question with and nobody is surnamed,
+    # so dropping them costs no player and saves "How did Denver play without
+    # Jokic" from resolving "How" to Dwight Howard.
     stop = {
-        "Which", "Who", "What", "Where", "Show", "Find", "Compare", "NBA", "WNBA",
-        "The", "Most", "Best", "Season", "Seasons", "Player", "Players", "And",
+        "Which", "Who", "What", "Where", "When", "Why", "How", "Show", "Find",
+        "Compare", "Give", "List", "Tell", "Rank", "NBA", "WNBA",
+        "Did", "Do", "Does", "Is", "Are", "Was", "Were", "Has", "Have", "Had",
+        "The", "Most", "Best", "Worst", "Top", "Since", "With", "Without",
+        "Play", "Played", "Season", "Seasons", "Player", "Players",
+        "Team", "Teams", "League", "Lineup", "Lineups", "And",
     }
     out: list[PlayerRef] = []
     for m in re.finditer(r"\b([A-Z][\w'’.-]+(?:\s+[A-Z][\w'’.-]+)*)", q):

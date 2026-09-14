@@ -39,7 +39,10 @@ const PAGE_ROUTES: Record<string, { tab: string; view?: string }> = {
   similarity: { tab: "players", view: "similar" },
   shots: { tab: "players", view: "shots" },
   compare: { tab: "players", view: "compare" },
+  impact: { tab: "players", view: "impact" },
   teams: { tab: "teams", view: "leaders" },
+  lineups: { tab: "teams", view: "lineups" },
+  wowy: { tab: "teams", view: "wowy" },
   explorer: { tab: "explorer" },
 };
 
@@ -85,6 +88,10 @@ export default function App() {
     if (!league) return;
     setMeta(null);
     setErr(null);
+    // An answer was computed in the league it was asked in. The page it pointed
+    // at is still the right page, so the route survives; the values it would
+    // fill in are the other league's team and players, so those do not.
+    setSeed((current) => (current ? { page: current.page, state: null } : null));
     api.meta(league).then(setMeta).catch((e) => setErr(e.message));
   }, [league]);
 
@@ -187,7 +194,7 @@ export default function App() {
             <PlayersSection meta={meta} view={viewFor("players")} seedFor={seedFor} />
           </Tabs.Content>
           <Tabs.Content value="teams">
-            <TeamsSection meta={meta} view={viewFor("teams")} />
+            <TeamsSection meta={meta} view={viewFor("teams")} seedFor={seedFor} />
           </Tabs.Content>
           <Tabs.Content value="explorer">
             <Explorer meta={meta} seed={seedFor("explorer")} />
@@ -204,8 +211,16 @@ export default function App() {
       <AskFullCourt
         meta={meta}
         onNavigate={(page, navigate) => {
-          setTab(PAGE_ROUTES[page]?.tab ?? page);
+          // Only ever switch to a tab that exists: a page name with no route
+          // used to be set as the tab itself, which left the app on a value no
+          // Tabs.Content matches — a blank screen with the nav still on it.
+          const route = PAGE_ROUTES[page];
+          if (!route) return;
+          setTab(route.tab);
           setSeed(navigate ?? null);
+          // The landing's entry wins over a seed in `viewFor`, so clear it or
+          // an answer opened from the page you entered on lands on that view.
+          setEntry(null);
         }}
       />
     </div>

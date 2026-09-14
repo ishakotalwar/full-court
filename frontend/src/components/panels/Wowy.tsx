@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { api, type Meta } from "@/lib/api";
 import { Card, CardBody, CardHeader } from "@/components/ui/Card";
 import { Select } from "@/components/ui/Select";
@@ -32,7 +32,9 @@ const COLS = [
  * disagreeing is usually the interesting part — a team that collapses without a
  * player may only be telling you about their backup.
  */
-export function Wowy({ meta }: { meta: Meta }) {
+/** `seed` arrives from Ask Full Court: the team, season and players the split
+ *  it just showed was taken on. */
+export function Wowy({ meta, seed }: { meta: Meta; seed?: any }) {
   const seasons = meta.lineup_seasons ?? [];
   const [season, setSeason] = useState(seasons.at(-1) ?? "");
   const [team, setTeam] = useState("");
@@ -44,6 +46,18 @@ export function Wowy({ meta }: { meta: Meta }) {
   useEffect(() => {
     setPicked([]);
   }, [team, season, meta.league]);
+
+  // Setting the team from a seed trips that reset, and the roster the seeded
+  // ids refer to hasn't loaded yet either — so the names are held here and
+  // applied below, once their roster is actually on screen.
+  const wanted = useRef<number[] | null>(null);
+  useEffect(() => {
+    if (!seed) return;
+    if (seed.season) setSeason(String(seed.season));
+    if (seed.team) setTeam(String(seed.team));
+    const ids = (seed.players ?? []).map(Number).filter(Number.isFinite);
+    wanted.current = ids.length ? ids : null;
+  }, [seed]);
 
   useEffect(() => {
     if (!season || !team) {
@@ -61,6 +75,17 @@ export function Wowy({ meta }: { meta: Meta }) {
   }, [season, team, picked.join(","), meta.league]);
 
   const roster = data?.roster ?? [];
+
+  useEffect(() => {
+    if (!wanted.current || !roster.length) return;
+    const present = wanted.current.filter((id: number) =>
+      roster.some((p: any) => p.player_id === id)
+    );
+    wanted.current = null;
+    if (present.length) setPicked(present);
+    // `data` rather than `roster`, which is a fresh array on every render.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [data]);
   // Who is selected, in the order the roster lists them, for the marker columns.
   const chosen = useMemo(
     () => picked.map((id) => roster.find((p: any) => p.player_id === id)).filter(Boolean),

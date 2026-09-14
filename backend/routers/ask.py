@@ -11,7 +11,7 @@ import difflib
 import re
 
 import pandas as pd
-from fastapi import APIRouter
+from fastapi import APIRouter, HTTPException
 
 from .. import analytics, data, leagues
 from ..ask_parse import llm_available, parse_llm, parse_rules
@@ -396,8 +396,11 @@ def _run_impact(query: AskQuery, lg) -> dict:
         return _fail(f"I don't have impact ratings for the {lg.label} yet.")
 
     board = data.IMPACT_METRICS[metric]
-    out = players_router.player_ratings(season=season, league=lg.key, metric=metric,
-                                        limit=max(query.limit, 10))
+    try:
+        out = players_router.player_ratings(season=season, league=lg.key, metric=metric,
+                                            limit=max(query.limit, 10))
+    except HTTPException as e:
+        return _fail(str(e.detail))
     rows = out.get("rows", [])
     if query.dir == "asc":
         rows = list(reversed(rows))
@@ -429,8 +432,14 @@ def _run_lineups(query: AskQuery, lg) -> dict:
         return _fail(f"I don't have rebuilt lineups for the {lg.label} yet.")
 
     size = query.group_size if query.group_size in (2, 3, 4, 5) else 5
-    out = teams_router.team_lineups(season=season, league=lg.key, team=query.team,
-                                    size=size, limit=max(query.limit, 10))
+    try:
+        out = teams_router.team_lineups(season=season, league=lg.key, team=query.team,
+                                        size=size, limit=max(query.limit, 10))
+    except HTTPException as e:
+        # The panel endpoints raise for a team they have nothing for — asking
+        # about one is a question with an answer ("I don't have that"), not a
+        # failed request, so it is reported in the answer.
+        return _fail(str(e.detail))
     # The endpoint orders by minutes, which answers "who played together most"
     # rather than the question actually asked.
     rows = sorted(out.get("rows", []),
@@ -474,8 +483,11 @@ def _run_wowy(query: AskQuery, lg, resolved: list[dict]) -> dict:
     if not ids:
         return _fail("Tell me which player to split on.")
 
-    out = teams_router.team_wowy(season=season, team=team, league=lg.key,
-                                 players=",".join(ids))
+    try:
+        out = teams_router.team_wowy(season=season, team=team, league=lg.key,
+                                     players=",".join(ids))
+    except HTTPException as e:
+        return _fail(str(e.detail))
     rows = out.get("rows", [])
     if not rows:
         return _fail(f"I couldn't split {team}'s {lg.display_season(season)} that way.")
@@ -498,6 +510,46 @@ def _run_wowy(query: AskQuery, lg, resolved: list[dict]) -> dict:
 # Endpoint
 # --------------------------------------------------------------------------
 
+# A suggestion has to be answerable in the league it is suggested in: half of
+# these name a player or a team, and the two leagues share none of either. The
+# one cross-league question in each list names its league out loud, which is
+# what makes it work from the other side.
+EXAMPLES: dict[str, list[str]] = {
+    "nba": [
+        "Which NBA players since 2010 averaged at least 25 points per game?",
+        "Which players since 2003 averaged 20+ PPG and 8+ APG?",
+        "Who had seasons most similar to 2025 SGA?",
+        "Find seasons similar to 2016 Stephen Curry for shooting.",
+        "Compare 2016 Curry and 2024 Luka.",
+        "Where was Stephen Curry most efficient in 2022?",
+        "Which NBA teams had the best eFG% since 2003?",
+        "Show WNBA players since 2020 who shot at least 40% from three.",
+        "Who are the best rim protectors?",
+        "Who had the highest RAPM in 2026?",
+        "Top on/off players this season",
+        "Best five-man lineups for the Celtics",
+        "Best 3-man lineups for the Nuggets",
+        "How did Denver play without Jokic?",
+    ],
+    "wnba": [
+        "Which WNBA players since 2015 averaged at least 20 points per game?",
+        "Which players since 2010 averaged 18+ PPG and 5+ APG?",
+        "Who had seasons most similar to 2025 A'ja Wilson?",
+        "Find seasons similar to 2024 Caitlin Clark for playmaking.",
+        "Compare 2025 A'ja Wilson and 2025 Breanna Stewart.",
+        "Where was Kelsey Plum most efficient in 2025?",
+        "Which WNBA teams had the best eFG% since 2010?",
+        "Show NBA players since 2020 who shot at least 40% from three.",
+        "Best WNBA defensive players",
+        "Who had the highest RAPM in 2026?",
+        "Top on/off players this season",
+        "Best five-man lineups for the Aces",
+        "Best 3-man lineups for the Liberty",
+        "How did Indiana play without Caitlin Clark?",
+    ],
+}
+
+
 @router.get("/ask/capabilities")
 def capabilities(league: str | None = None):
     """What the natural-language layer can currently answer."""
@@ -509,23 +561,7 @@ def capabilities(league: str | None = None):
         "presets": list(similarity_router.PRESETS),
         "impact_metrics": {k: v["label"] for k, v in data.IMPACT_METRICS.items()},
         "llm_parser": llm_available(),
-        "examples": [
-            "Which NBA players since 2010 averaged at least 25 points per game?",
-            "Which players since 2003 averaged 20+ PPG and 8+ APG?",
-            "Who had seasons most similar to 2025 SGA?",
-            "Find seasons similar to 2016 Stephen Curry for shooting.",
-            "Compare 2016 Curry and 2024 Luka.",
-            "Where was Stephen Curry most efficient in 2022?",
-            "Which NBA teams had the best eFG% since 2003?",
-            "Show WNBA players since 2020 who shot at least 40% from three.",
-            "Best WNBA defensive players",
-            "Who are the best rim protectors?",
-            "Who had the highest RAPM in 2026?",
-            "Top on/off players this season",
-            "Best five-man lineups for the Celtics",
-            "Best 3-man lineups for the Nuggets",
-            "How did Denver play without Jokic?",
-        ],
+        "examples": EXAMPLES.get(lg.key, EXAMPLES["nba"]),
     }
 
 

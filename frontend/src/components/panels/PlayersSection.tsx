@@ -37,7 +37,7 @@ export function PlayersSection({
       <ViewTabs views={VIEWS} value={active} onChange={setActive} />
       {active === "overview" && <Players meta={meta} />}
       {active === "compare" && <Compare meta={meta} seed={seedFor("compare")} />}
-      {active === "impact" && <Ratings meta={meta} />}
+      {active === "impact" && <Ratings meta={meta} seed={seedFor("impact")} />}
       {active === "similar" && <Similar meta={meta} seed={seedFor("similarity")} />}
       {active === "shots" && <ShotAnalysis meta={meta} seed={seedFor("shots")} />}
     </div>

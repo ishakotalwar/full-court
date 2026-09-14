@@ -29,6 +29,8 @@ type AskResult = {
   target_page?: string;
   total?: number;
   metric?: string;
+  /** A caveat the answer came with — what a rating does and does not see. */
+  note?: string;
   parser?: string;
   /** The answer's own league format — an NBA question can return WNBA rows. */
   season_format?: "range" | "year";
@@ -247,6 +249,13 @@ function Answer({
       {result.intent === "team_explorer" && (
         <TeamRows rows={rows} metric={result.metric} fmt={fmt} />
       )}
+      {result.intent === "impact" && (
+        <ImpactRows rows={rows} metric={result.metric} meta={meta} />
+      )}
+      {result.intent === "lineups" && <LineupRows rows={rows} />}
+      {result.intent === "wowy" && <WowyRows rows={rows} />}
+
+      {result.note && <div className="text-xs leading-snug text-mute">{result.note}</div>}
 
       {result.target_page && onNavigate && (
         <button
@@ -269,6 +278,9 @@ const PAGE_LABELS: Record<string, string> = {
   compare: "Compare",
   shots: "Shot Analysis",
   teams: "Teams",
+  impact: "Impact",
+  lineups: "Lineups",
+  wowy: "WOWY",
 };
 
 function Cell({ children }: { children: React.ReactNode }) {
@@ -414,6 +426,160 @@ function ZoneRows({ rows }: { rows: any[] }) {
       </table>
     </div>
   );
+}
+
+/** An impact leaderboard: one rated metric, ranked, with what it was fit on.
+ *  The ranking is the answer, so the rank column is part of the table. */
+function ImpactRows({ rows, metric, meta }: { rows: any[]; metric?: string; meta: Meta }) {
+  const col = metric ?? "rapm";
+  // The API names the column it ranked on; /api/meta already names that column
+  // for humans, so the header reads "RAPM" and not "rapm".
+  const heading =
+    Object.values(meta.impact_metrics ?? {}).find((m) => m.column === col)?.label ??
+    metricLabel(col);
+  if (rows.length === 0) return <div className="text-mute">No rated players that season.</div>;
+  return (
+    <div className="overflow-x-auto border border-border">
+      <table className="w-full text-xs">
+        <thead className="text-mute">
+          <tr className="border-b border-border">
+            <th className="px-2 py-1.5 text-left font-medium">Player</th>
+            <th className="px-2 py-1.5 text-left font-medium">Team</th>
+            <th className="px-2 py-1.5 text-right font-medium">GP</th>
+            <th className="px-2 py-1.5 text-right font-medium">{heading}</th>
+          </tr>
+        </thead>
+        <tbody>
+          {rows.map((r, i) => (
+            <tr key={`${r.player_id}-${i}`} className="border-t border-border/60">
+              <Cell>
+                <span className="mr-2 text-mute">{i + 1}</span>
+                {r.player_name}
+              </Cell>
+              <Cell>{r.team_abbr ?? "—"}</Cell>
+              <td className="px-2 py-1.5 text-right tabular-nums">{r.games ?? "—"}</td>
+              <td className="px-2 py-1.5 text-right tabular-nums text-ink">
+                {formatValue(col, r[col])}
+              </td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
+    </div>
+  );
+}
+
+/** Groups of players, ranked by net rating. The names are the row, so this one
+ *  wraps rather than scrolling: five names never fit on a line at this width. */
+function LineupRows({ rows }: { rows: any[] }) {
+  if (rows.length === 0) return <div className="text-mute">No groups cleared the minutes floor.</div>;
+  return (
+    <div className="border border-border">
+      <table className="w-full text-xs">
+        <thead className="text-mute">
+          <tr className="border-b border-border">
+            <th className="px-2 py-1.5 text-left font-medium">Lineup</th>
+            <th className="px-2 py-1.5 text-right font-medium">MIN</th>
+            <th className="px-2 py-1.5 text-right font-medium">Net</th>
+          </tr>
+        </thead>
+        <tbody>
+          {rows.map((r, i) => (
+            <tr key={i} className="border-t border-border/60 align-top">
+              <td className="px-2 py-1.5 leading-snug">
+                {r.team_abbr && <span className="mr-1.5 text-mute">{r.team_abbr}</span>}
+                {(r.players ?? []).map((p: any) => p.name ?? p).join(" · ")}
+              </td>
+              <td className="px-2 py-1.5 text-right tabular-nums">
+                {r.min == null ? "—" : Math.round(r.min)}
+              </td>
+              <td
+                className={cn(
+                  "px-2 py-1.5 text-right tabular-nums",
+                  r.net > 0 ? "text-good" : r.net < 0 ? "text-bad" : "text-mute",
+                )}
+              >
+                {formatValue("net", r.net)}
+              </td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
+    </div>
+  );
+}
+
+/** On and off, and — the whole point of the question — the gap between them,
+ *  which the API leaves to the caller to take. */
+function WowyRows({ rows }: { rows: any[] }) {
+  if (rows.length === 0) return <div className="text-mute">Not enough minutes to split.</div>;
+  const on = rows.find((r) => (r.on?.length ?? 0) > 0);
+  const off = rows.find((r) => (r.on?.length ?? 0) === 0);
+  const diff =
+    on && off && rows.length === 2
+      ? { ortg: on.ortg - off.ortg, drtg: on.drtg - off.drtg, net: on.net - off.net }
+      : null;
+  return (
+    <div className="overflow-x-auto border border-border">
+      <table className="w-full text-xs">
+        <thead className="text-mute">
+          <tr className="border-b border-border">
+            <th className="px-2 py-1.5 text-left font-medium">Split</th>
+            <th className="px-2 py-1.5 text-right font-medium">MIN</th>
+            <th className="px-2 py-1.5 text-right font-medium">ORtg</th>
+            <th className="px-2 py-1.5 text-right font-medium">DRtg</th>
+            <th className="px-2 py-1.5 text-right font-medium">Net</th>
+          </tr>
+        </thead>
+        <tbody>
+          {rows.map((r, i) => (
+            <tr key={i} className="border-t border-border/60">
+              <Cell>{r.label}</Cell>
+              <td className="px-2 py-1.5 text-right tabular-nums">
+                {r.min == null ? "—" : Math.round(r.min)}
+              </td>
+              <td className="px-2 py-1.5 text-right tabular-nums">{formatValue("ortg", r.ortg)}</td>
+              <td className="px-2 py-1.5 text-right tabular-nums">{formatValue("drtg", r.drtg)}</td>
+              <td className="px-2 py-1.5 text-right tabular-nums">{formatValue("net", r.net)}</td>
+            </tr>
+          ))}
+          {diff && (
+            <tr className="border-t border-border bg-bg">
+              <Cell>
+                <span className="text-mute">Difference</span>
+              </Cell>
+              <td />
+              <td className="px-2 py-1.5 text-right tabular-nums">{signed(diff.ortg)}</td>
+              {/* A defensive rating falling is the defence improving, so the
+                  colour follows the meaning rather than the sign. */}
+              <td
+                className={cn(
+                  "px-2 py-1.5 text-right tabular-nums",
+                  diff.drtg < 0 ? "text-good" : diff.drtg > 0 ? "text-bad" : "text-mute",
+                )}
+              >
+                {signed(diff.drtg)}
+              </td>
+              <td
+                className={cn(
+                  "px-2 py-1.5 text-right font-medium tabular-nums",
+                  diff.net > 0 ? "text-good" : diff.net < 0 ? "text-bad" : "text-mute",
+                )}
+              >
+                {signed(diff.net)}
+              </td>
+            </tr>
+          )}
+        </tbody>
+      </table>
+    </div>
+  );
+}
+
+/** A rating gap, always signed: "+10.7" reads as a difference, "10.7" doesn't. */
+function signed(v: number | null | undefined): string {
+  if (v == null || Number.isNaN(v)) return "—";
+  return `${v > 0 ? "+" : v < 0 ? "−" : ""}${Math.abs(v).toFixed(1)}`;
 }
 
 function TeamRows({
