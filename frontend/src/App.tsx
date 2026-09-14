@@ -113,6 +113,7 @@ function LandingScreen({ leagues }: { leagues: LeagueInfo[] }) {
         leagues={leagues}
         league={league}
         onLeague={setLeague}
+        onEnter={(key) => navigate(pathTo(key, DEFAULT_TAB.stats))}
         onPick={(dest) => navigate(pathTo(league, dest.tab, dest.view))}
       />
     </div>

@@ -280,7 +280,7 @@ export function Explorer({ meta, seed }: { meta: Meta; seed?: any }) {
                 )}
                 <button
                   onClick={() => setFilters((fs) => fs.filter((_, idx) => idx !== i))}
-                  className="border border-border px-3 py-2 text-mute transition hover:text-ink"
+                  className="rounded-lg border border-border px-3 py-2 text-mute transition hover:text-ink"
                 >
                   ×
                 </button>

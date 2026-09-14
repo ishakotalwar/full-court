@@ -203,7 +203,9 @@ export function Ratings({ meta }: { meta: Meta }) {
       })
       .then((d) => {
         setData(d);
-        setPicked(d.rows?.[0]?.player_id ?? null);
+        // Nobody, until someone is chosen. Opening on the leader put a whole
+        // breakdown on screen for a player the visitor never asked about.
+        setPicked(null);
       })
       .catch((e) => {
         setErr(e.message);
@@ -250,8 +252,11 @@ export function Ratings({ meta }: { meta: Meta }) {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [rows, sort, scale]);
 
+  // Only what was actually clicked. Falling back to the top row meant the page
+  // arrived showing one player's breakdown as though someone had asked for it,
+  // and highlighted them on the chart too.
   const selected = useMemo(
-    () => rows.find((r: any) => r.player_id === picked) ?? rows[0] ?? null,
+    () => rows.find((r: any) => r.player_id === picked) ?? null,
     [rows, picked]
   );
 
@@ -408,9 +413,9 @@ export function Ratings({ meta }: { meta: Meta }) {
                   onClick={() => setMetric(key)}
                   title={m.blurb}
                   className={cn(
-                    "border px-3 py-1.5 text-sm transition",
+                    "rounded-full border px-3.5 py-1.5 text-sm transition",
                     key === metric
-                      ? "border-accent bg-accent/10 text-ink"
+                      ? "border-accent bg-accent font-medium text-onAccent"
                       : "border-border text-mute hover:text-ink"
                   )}
                 >
@@ -553,7 +558,28 @@ export function Ratings({ meta }: { meta: Meta }) {
             </CardBody>
           </Card>
 
-          {selected && (
+          {!selected ? (
+            <Card>
+              <CardBody>
+                <div className="flex flex-col items-center gap-2 py-8 text-center">
+                  <span
+                    aria-hidden
+                    className="flex h-11 w-11 items-center justify-center rounded-full bg-accent/10 text-accent"
+                  >
+                    <svg viewBox="0 0 24 24" className="h-6 w-6" fill="none" stroke="currentColor"
+                         strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                      <path d="M4 19V5M9 19v-6M14 19v-9M19 19V8" />
+                    </svg>
+                  </span>
+                  <div className="font-semibold text-ink">Pick a player</div>
+                  <p className="max-w-xs text-sm leading-relaxed text-mute">
+                    Choose a row from the table, or a dot on the chart, to see how
+                    their rating was arrived at.
+                  </p>
+                </div>
+              </CardBody>
+            </Card>
+          ) : (
             <Card>
               <CardHeader
                 lead={

@@ -30,6 +30,16 @@ export default {
           "sans-serif",
         ],
       },
+      // Named here rather than as an arbitrary `animate-[spin_1.1s_...]`:
+      // Tailwind only emits `@keyframes spin` for its own `animate-spin`
+      // utility, so an arbitrary value naming it compiles to an animation
+      // pointing at keyframes that were never written.
+      keyframes: {
+        "ball-spin": { to: { transform: "rotate(360deg)" } },
+      },
+      animation: {
+        "ball-spin": "ball-spin 2.6s linear infinite",
+      },
       boxShadow: {
         card: "0 1px 0 rgba(255,255,255,0.04) inset, 0 8px 24px rgba(0,0,0,0.3)",
       },

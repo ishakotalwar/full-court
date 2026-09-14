@@ -20,6 +20,33 @@ function pctTone(p: number | null): string {
   return "text-mute";
 }
 
+/**
+ * The page before anything is chosen — the first thing every visitor sees, so
+ * it says what will appear instead of drawing eight empty slots with dashes in
+ * them where the numbers are going to go.
+ */
+function EmptyPlayer() {
+  return (
+    <div className="flex flex-col items-center gap-3 py-12 text-center">
+      <span
+        aria-hidden
+        className="flex h-14 w-14 items-center justify-center rounded-full bg-accent/10 text-accent"
+      >
+        <svg viewBox="0 0 24 24" className="h-7 w-7" fill="none" stroke="currentColor"
+             strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+          <circle cx="12" cy="8" r="3.4" />
+          <path d="M5 20v-1a7 7 0 0 1 14 0v1" />
+        </svg>
+      </span>
+      <div className="text-lg font-semibold text-ink">Pick a player to begin</div>
+      <p className="max-w-sm text-sm leading-relaxed text-mute">
+        Their season line, percentiles against the league, career trend and
+        recent games all appear here. Start typing a name in the box above.
+      </p>
+    </div>
+  );
+}
+
 export function Players({ meta }: { meta: Meta }) {
   const [sel, setSel] = useQueryPlayer(meta);
   const [info, setInfo] = useState<PlayerInfo | null>(null);
@@ -102,6 +129,10 @@ export function Players({ meta }: { meta: Meta }) {
       {/* identity + headline numbers */}
       <Card>
         <CardBody>
+        {!sel.playerId ? (
+          <EmptyPlayer />
+        ) : (
+          <>
           <div className="flex flex-wrap items-start gap-5">
             <Avatar
               name={sel.playerName || "?"}
@@ -134,24 +165,28 @@ export function Players({ meta }: { meta: Meta }) {
             </div>
           </div>
 
-          <div className="mt-5 grid grid-cols-2 gap-x-6 gap-y-4 sm:grid-cols-4 lg:grid-cols-8">
-            {(stats.length ? stats : Array.from({ length: 8 }, () => null)).map(
-              (s: any, i: number) => (
-                <div key={s?.metric ?? i}>
-                  <div className="label">{s ? shortLabel(s.metric) : "—"}</div>
+          {/* Only once there are numbers. Eight empty slots holding dashes
+              read as a broken table rather than as a page waiting. */}
+          {stats.length > 0 && (
+            <div className="mt-5 grid grid-cols-2 gap-x-6 gap-y-4 sm:grid-cols-4 lg:grid-cols-8">
+              {stats.map((s: any) => (
+                <div key={s.metric}>
+                  <div className="label">{shortLabel(s.metric)}</div>
                   <div className="mt-0.5 text-lg font-semibold tabular-nums text-ink">
-                    {s ? formatValue(s.metric, s.value) : "—"}
+                    {formatValue(s.metric, s.value)}
                   </div>
-                  <div className={cn("text-xs tabular-nums", pctTone(s?.percentile ?? null))}>
-                    {s?.percentile != null ? `${ordinal(s.percentile)} %ile` : " "}
+                  <div className={cn("text-xs tabular-nums", pctTone(s.percentile ?? null))}>
+                    {s.percentile != null ? `${ordinal(s.percentile)} %ile` : " "}
                   </div>
                   <div className="text-[11px] text-mute">
-                    {s?.rank != null ? `#${s.rank} in league` : " "}
+                    {s.rank != null ? `#${s.rank} in league` : " "}
                   </div>
                 </div>
-              )
-            )}
-          </div>
+              ))}
+            </div>
+          )}
+          </>
+        )}
         </CardBody>
       </Card>
 

@@ -294,9 +294,9 @@ export function Lineups({ meta }: { meta: Meta }) {
                     type="button"
                     onClick={() => setSize(n)}
                     className={cn(
-                      "flex-1 border px-2 py-1.5 text-sm transition",
+                      "flex-1 rounded-full border px-2 py-1.5 text-sm transition",
                       n === size
-                        ? "border-accent bg-accent/10 text-ink"
+                        ? "border-accent bg-accent font-medium text-onAccent"
                         : "border-border text-mute hover:text-ink"
                     )}
                   >

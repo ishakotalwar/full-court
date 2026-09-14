@@ -1,5 +1,4 @@
 import type { ReactNode } from "react";
-import { LinePlayer } from "@/components/LinePlayer";
 import { cn } from "@/lib/cn";
 import { formatSeason } from "@/lib/season";
 import type { LeagueInfo, LeagueKey } from "@/lib/api";
@@ -61,11 +60,15 @@ export function Landing({
   leagues,
   league,
   onLeague,
+  onEnter,
   onPick,
 }: {
   leagues: LeagueInfo[];
   league: LeagueKey;
+  /** Point the page at a league, without leaving it. */
   onLeague: (key: LeagueKey) => void;
+  /** Open a league at its first page — Players, with the tabs above it. */
+  onEnter: (key: LeagueKey) => void;
   onPick: (dest: Destination) => void;
 }) {
   const active = leagues.find((l) => l.key === league);
@@ -156,7 +159,10 @@ export function Landing({
               and forecasts for games not yet played.
             </p>
 
-            <div className="mt-4 inline-flex items-center gap-1 border border-border bg-bg p-1">
+            {/* Two controls, two jobs. The toggle aims the page — the numbers
+                beside it and the tiles below it both follow it — and the one
+                button under it opens whichever league the toggle is on. */}
+            <div className="mt-4 inline-flex items-center gap-1 rounded-full border border-border bg-bg p-1">
               {leagues.map((l) => (
                 <button
                   key={l.key}
@@ -165,11 +171,11 @@ export function Landing({
                   disabled={!l.available && l.key !== league}
                   title={
                     l.available
-                      ? `Show ${l.label} data`
+                      ? `Show ${l.label} numbers and pages`
                       : `No ${l.label} data yet — run the ETL for this league`
                   }
                   className={cn(
-                    "px-5 py-1.5 text-sm font-semibold tracking-tight transition",
+                    "rounded-full px-5 py-1.5 text-sm font-semibold tracking-tight transition",
                     l.key === league
                       ? "bg-accent text-onAccent shadow-lg shadow-accent/30"
                       : "text-mute hover:text-ink",
@@ -180,12 +186,59 @@ export function Landing({
                 </button>
               ))}
             </div>
+
+            {/* The ball is the button. It spins while the cursor is on it,
+                the way one does on a finger — which is the whole trick: the
+                thing you press is the thing the site is about. */}
+            <button
+              type="button"
+              onClick={() => onEnter(league)}
+              disabled={!active?.available}
+              title={`Go to ${active?.label ?? league.toUpperCase()}`}
+              className={cn(
+                "group/go mt-5 flex items-center gap-3.5 text-left",
+                "focus-visible:outline-none",
+                !active?.available && "cursor-not-allowed opacity-40"
+              )}
+            >
+              {/* The scale lives on the wrapper and the spin on the ball.
+                  Both on one element and they fight over `transform`: the
+                  keyframe ends at `rotate(360deg)` with no scale in it, so the
+                  browser interpolates between two different transforms and the
+                  ball pulses instead of turning. */}
+              <span
+                className={cn(
+                  "shrink-0 transition-transform duration-200",
+                  "group-hover/go:scale-105 group-active/go:scale-95"
+                )}
+              >
+                <Basketball
+                  aria-hidden
+                  className={cn(
+                    "h-14 w-14 text-accent",
+                    "group-hover/go:animate-ball-spin",
+                    "group-focus-visible/go:animate-ball-spin"
+                  )}
+                />
+              </span>
+              <span>
+                <span className="block text-[15px] font-semibold tracking-tight text-ink">
+                  Go to {active?.label ?? league.toUpperCase()}
+                  <span
+                    aria-hidden
+                    className="ml-1.5 inline-block text-accent transition-transform group-hover/go:translate-x-1"
+                  >
+                    →
+                  </span>
+                </span>
+              </span>
+            </button>
           </div>
 
-          {/* A mark, not a hero — and the first thing to go when the row runs
-              out of width, since the numbers beside it say more. */}
-          <LinePlayer className="hidden h-28 w-auto shrink-0 text-accent xl:block" />
-
+          {/* The dribbling figure used to stand here. It is still in
+              `components/LinePlayer.tsx` — drop it back in as
+              `<LinePlayer className="hidden h-28 w-auto shrink-0 text-accent xl:block" />`
+              if you want it again. */}
           <dl className="grid w-full shrink-0 grid-cols-2 gap-x-10 gap-y-5 sm:w-auto">
             {stats.map((s) => (
               <div key={s.label}>
@@ -268,18 +321,16 @@ const IconCompare = (
   </svg>
 );
 const IconShots = (
-  <svg viewBox="0 0 24 24" className="h-[22px] w-[22px]" {...g}>
-    {/* A ball over a rim and net. Three big shapes, because a trajectory arc
-        and a rim drawn small enough to share the box merge into an arrowhead. */}
-    {/* A ball above a rim, and a net that stays a trapezoid — taper it to a
-        point and the whole glyph turns into a map pin. */}
-    <circle cx="12" cy="4.2" r="2.6" />
-    <path d="M3 10.5h18" />
-    <path d="M6 10.5 8 18.6M18 10.5 16 18.6" />
-    {/* A net hangs in scallops, so its bottom edge is a W and not a hem. The
-        rim is wider and the taper gentler than they want to be, because the
-        zigzag needs room to still be a zigzag at 22 pixels. */}
-    <path d="M8 18.6 10 21 12 18.9 14 21 16 18.6" />
+  <svg viewBox="0 0 24 24" className="h-[22px] w-[22px]" overflow="visible" {...g}>
+    {/* A ball over a rim and net. The net is stated by its hem: three ridges
+        of equal depth, which is what a net looks like from the side. The
+        taper is gentle and the rim nearly the full box, because the ridges
+        need the width to still be ridges at 22 pixels. The ball and hem
+        overhang the box by a pixel or so; the chip around it has room. */}
+    <circle cx="12" cy="2.6" r="3.5" />
+    <path d="M2.5 9.6h19" />
+    <path d="M5.4 9.6 6.9 20.6M18.6 9.6 17.1 20.6" />
+    <path d="M6.9 20.6 8.6 23.2 10.3 20.6 12 23.2 13.7 20.6 15.4 23.2 17.1 20.6" />
   </svg>
 );
 const IconTeams = (
@@ -435,6 +486,22 @@ function Entry({
         </span>
       </span>
     </button>
+  );
+}
+
+
+/** A basketball: the ball itself, seams and all, drawn rather than imported so
+ *  it follows the palette like everything else on the page. */
+function Basketball(props: { className?: string; "aria-hidden"?: boolean }) {
+  return (
+    <svg viewBox="0 0 100 100" {...props} fill="none" stroke="currentColor"
+         strokeWidth="4" strokeLinecap="round">
+      <circle cx="50" cy="50" r="45" />
+      <path d="M50 5v90M5 50h90" />
+      {/* The two long seams, bowing away from the poles. */}
+      <path d="M19 17C33 31 33 69 19 83" />
+      <path d="M81 17C67 31 67 69 81 83" />
+    </svg>
   );
 }
 

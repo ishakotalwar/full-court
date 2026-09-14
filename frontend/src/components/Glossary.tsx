@@ -272,7 +272,7 @@ export function Glossary() {
         type="button"
         onClick={() => setOpen(true)}
         title="What the numbers mean"
-        className="border border-border px-2 py-0.5 text-xs text-mute transition hover:border-accent hover:text-ink"
+        className="rounded-full border border-border px-2.5 py-0.5 text-xs text-mute transition hover:border-accent hover:text-ink"
       >
         Glossary
       </button>

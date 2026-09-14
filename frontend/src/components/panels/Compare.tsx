@@ -157,7 +157,7 @@ export function Compare({ meta }: { meta: Meta }) {
               <button
                 onClick={() => removePick(i)}
                 title="Remove"
-                className="h-[42px] border border-border px-3 text-mute transition hover:text-ink"
+                className="h-[42px] rounded-lg border border-border px-3 text-mute transition hover:text-ink"
               >
                 ×
               </button>

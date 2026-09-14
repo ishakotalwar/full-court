@@ -57,7 +57,7 @@ export function MultiSelect({
         <button
           type="button"
           className={cn(
-           "flex min-h-[42px] w-full flex-wrap items-center gap-1.5 border border-border bg-bg px-2.5 py-1.5 text-left text-sm",
+           "flex min-h-[42px] w-full flex-wrap items-center gap-1.5 rounded-lg border border-border bg-bg px-3 py-1.5 text-left text-sm",
            "hover:border-mute focus:border-accent focus:outline-none",
             className
           )}
@@ -85,7 +85,7 @@ export function MultiSelect({
         <Popover.Content
           align="start"
           sideOffset={6}
-          className="z-50 w-[--radix-popover-trigger-width] border border-border bg-panel p-2"
+          className="z-50 w-[--radix-popover-trigger-width] rounded-lg border border-border bg-panel p-2"
           onOpenAutoFocus={(e) => {
             e.preventDefault();
             inputRef.current?.focus();
