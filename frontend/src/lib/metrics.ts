@@ -38,10 +38,18 @@ export const METRICS: MetricDef[] = [
   // Defense, per possession actually defended. The box score's steals and
   // blocks per game are above; these are the same acts against the right
   // denominator, plus the ones the box score never separated out.
-  { key: "blk_100", label: "Blocks per 100", shortLabel: "BLK/100", format: "decimal", category: "defense", higherIsBetter: true, description: "Blocks per 100 possessions defended" },
-  { key: "blk_rim_100", label: "Rim blocks per 100", shortLabel: "RIM BLK", format: "decimal", category: "defense", higherIsBetter: true, description: "Blocks on shots at the rim, per 100 possessions defended — rim protection on its own" },
-  { key: "stl_100", label: "Steals per 100", shortLabel: "STL/100", format: "decimal", category: "defense", higherIsBetter: true, description: "Steals per 100 possessions defended" },
-  { key: "foul_100", label: "Fouls per 100", shortLabel: "FOUL/100", format: "decimal", category: "defense", higherIsBetter: false, description: "Fouls committed per 100 possessions defended — the cost of defending, fewer is better" },
+  // Volume and the rebounding split. Stored as season totals and stated per
+  // game by the backend, so the rate basis moves them like any other count.
+  { key: "fgm_pg", label: "Field goals made", shortLabel: "FGM", format: "decimal", category: "shooting", higherIsBetter: true },
+  { key: "fga_pg", label: "Field goal attempts", shortLabel: "FGA", format: "decimal", category: "shooting", higherIsBetter: true },
+  { key: "fg3m_pg", label: "Threes made", shortLabel: "3PM", format: "decimal", category: "shooting", higherIsBetter: true },
+  { key: "fg3a_pg", label: "Three-point attempts", shortLabel: "3PA", format: "decimal", category: "shooting", higherIsBetter: true },
+  { key: "ftm_pg", label: "Free throws made", shortLabel: "FTM", format: "decimal", category: "shooting", higherIsBetter: true },
+  { key: "fta_pg", label: "Free throw attempts", shortLabel: "FTA", format: "decimal", category: "shooting", higherIsBetter: true },
+  { key: "oreb_pg", label: "Offensive rebounds", shortLabel: "OREB", format: "decimal", category: "rebounding", higherIsBetter: true },
+  { key: "dreb_pg", label: "Defensive rebounds", shortLabel: "DREB", format: "decimal", category: "rebounding", higherIsBetter: true },
+  { key: "blk_rim", label: "Rim blocks", shortLabel: "RIM BLK", format: "decimal", category: "defense", higherIsBetter: true, description: "Blocks on shots at the rim — rim protection on its own, and the one defensive count the box score has no column for" },
+  { key: "fouls", label: "Fouls", shortLabel: "PF", format: "decimal", category: "defense", higherIsBetter: false, description: "Personal fouls — the cost of defending, fewer is better" },
   { key: "on_def_rtg", label: "On-court defensive rating", shortLabel: "On DRtg", format: "rating", category: "defense", higherIsBetter: false, description: "Points the team allowed per 100 possessions with this player on the floor — lower is better" },
   // Team-season columns, for the Explorer's teams subject. The four factors
   // and win percentage read as three-decimal rates everywhere else in the app

@@ -15,18 +15,44 @@ CANDIDATE_METRICS = [
     "ts_pct", "usg_pct", "ortg", "drtg",
     "pts", "ast", "reb", "stl", "blk", "tov",
     "fg_pct", "three_pct", "ft_pct", "per", "bpm",
+    # Volume and the rebounding split, per game. The feed stores these as
+    # season totals; `PER_GAME_FROM_TOTAL` states them per game so the rate
+    # basis governs them like points and rebounds.
+    "fgm_pg", "fga_pg", "fg3m_pg", "fg3a_pg", "ftm_pg", "fta_pg",
+    "oreb_pg", "dreb_pg", "fouls",
     # Defense, from the play-by-play detail in `data/defense_<league>.parquet`.
-    # The box score only ever offered steals and blocks per game, which is why
-    # every defensive question on this site used to end in the same two
-    # columns. These are rates against possessions actually defended.
-    "blk_100", "blk_rim_100", "stl_100", "foul_100", "on_def_rtg",
+    # Only what the box score has no column for at all: blocks split out to
+    # the ones at the rim, and the team's rating with this player on the
+    # floor. Blocks, steals and fouls themselves are box-score counts above,
+    # and the rate basis restates those — a second per-100 copy of them was
+    # the same stat twice under two different denominators.
+    "blk_rim", "on_def_rtg",
 ]
-INVERT_METRICS = {"drtg", "tov", "foul_100", "on_def_rtg"}
+INVERT_METRICS = {"drtg", "tov", "fouls", "on_def_rtg"}
+
+# What the explorer's results table shows as columns. Everything in
+# CANDIDATE_METRICS can be filtered, sorted and charted on; only these get a
+# column, because a table wide enough for all of them scrolls sideways and a
+# player's row can no longer be read at a glance.
+
+# Columns the feed stores as season totals, and the per-game name each one
+# gets alongside it. PER reads the totals under their own names, so these are
+# added beside them rather than converted in place — and being per game is
+# what lets the rate basis restate them like any other counting stat.
+PER_GAME_FROM_TOTAL = {
+    "pf": "fouls",
+    "fgm": "fgm_pg", "fga": "fga_pg",
+    "fg3m": "fg3m_pg", "fg3a": "fg3a_pg",
+    "ftm": "ftm_pg", "fta": "fta_pg",
+    "oreb": "oreb_pg", "dreb": "dreb_pg",
+}
+
 
 # Counting stats, which mean different things at different rates. Everything
 # else in the table is already a rate (`fg_pct`) or a total (`gp`), and is left
 # alone whichever basis is asked for.
-COUNTING_STATS = ["pts", "ast", "reb", "stl", "blk", "tov"]
+COUNTING_STATS = ["pts", "ast", "reb", "stl", "blk", "tov", "fouls", "blk_rim",
+                  *[c for c in PER_GAME_FROM_TOTAL.values() if c != "fouls"]]
 
 # How to express a counting stat. Stored per game; the rest divide out playing
 # time so a bench player and a starter can be read on one scale. Per 75 is the
@@ -100,12 +126,38 @@ RATING_COLUMNS = ([f"{side}_{part}" for side in ("off", "def") for part in RATIN
                   + ["off_rating", "def_rating", "rapm", "on_off"])
 
 
+def _candidates(stem: str, league: League) -> list[Path]:
+    """Where `<stem>` may live: the league-suffixed name, and for the default
+    league the pre-league `<stem>.parquet` so old NBA data works unmigrated."""
+    paths = [DATA_DIR / f"{stem}{league.suffix}.parquet"]
+    if league is DEFAULT:
+        paths.append(DATA_DIR / f"{stem}.parquet")
+    return paths
+
+
+@lru_cache(maxsize=64)
+def row_count(stem: str, league: League = DEFAULT) -> int | None:
+    """How many rows a dataset has, or None if it isn't on disk.
+
+    Read from the Parquet footer, so counting a file costs nothing close to
+    loading it — this is how the landing page can state the size of the shot
+    table without ever pulling twenty megabytes of coordinates into memory.
+    """
+    import pyarrow.parquet as pq
+
+    for path in _candidates(stem, league):
+        if path.exists():
+            try:
+                return pq.ParquetFile(path).metadata.num_rows
+            except Exception:
+                return None
+    return None
+
+
 def _load(stem: str, league: League) -> pd.DataFrame:
     """Load `<stem><suffix>.parquet`, falling back to the pre-league
     `<stem>.parquet` name so existing NBA data keeps working unmigrated."""
-    candidates = [DATA_DIR / f"{stem}{league.suffix}.parquet"]
-    if league is DEFAULT:
-        candidates.append(DATA_DIR / f"{stem}.parquet")
+    candidates = _candidates(stem, league)
     for path in candidates:
         if path.exists():
             return pd.read_parquet(path)
@@ -126,12 +178,10 @@ def _with_season_str(df: pd.DataFrame) -> pd.DataFrame:
 # per 100 possessions the player actually defended, which is the denominator
 # minutes cannot give you: two players can log the same minutes against very
 # different numbers of possessions.
-DEFENSE_RATES = {
-    "blk_100": "blocks",
-    "blk_rim_100": "blocks_rim",
-    "stl_100": "steals",
-    "foul_100": "fouls",
-}
+# Play-by-play counts that the box score has no column for, stated per game so
+# the rate basis restates them like any other counting stat. `def_poss` is kept
+# beside them as the count they were divided by.
+DEFENSE_COUNTS = {"blk_rim": "blocks_rim"}
 
 
 @lru_cache(maxsize=8)
@@ -147,7 +197,19 @@ def defense(league: League = DEFAULT) -> pd.DataFrame | None:
 @lru_cache(maxsize=8)
 def players(league: League = DEFAULT) -> pd.DataFrame:
     rows = _with_season_str(_load("players", league))
-    return _with_defense(rows, league)
+    return _with_defense(_with_fouls(rows), league)
+
+
+def _with_fouls(rows: pd.DataFrame) -> pd.DataFrame:
+    """Per-game versions of the columns stored as season totals."""
+    if "gp" not in rows.columns:
+        return rows
+    out = rows.copy()
+    games = pd.to_numeric(out["gp"], errors="coerce").where(lambda g: g > 0)
+    for total, per_game in PER_GAME_FROM_TOTAL.items():
+        if total in out.columns:
+            out[per_game] = (pd.to_numeric(out[total], errors="coerce") / games).round(2)
+    return out
 
 
 def _with_defense(rows: pd.DataFrame, league: League) -> pd.DataFrame:
@@ -161,17 +223,20 @@ def _with_defense(rows: pd.DataFrame, league: League) -> pd.DataFrame:
     if detail is None or detail.empty:
         return rows
 
-    keep = ["season", "player_id", "def_poss", "on_def_rtg",
-            *DEFENSE_RATES.values()]
+    keep = ["season", "player_id", "def_poss", "pbp_gp", "on_def_rtg",
+            *DEFENSE_COUNTS.values()]
     have = [c for c in keep if c in detail.columns]
     sub = detail[have].drop_duplicates(["season", "player_id"]).copy()
 
-    poss = pd.to_numeric(sub.get("def_poss"), errors="coerce")
-    for rate, source in DEFENSE_RATES.items():
+    # Per game, on this feed's own game count rather than the box score's —
+    # the two can disagree by a game or two, and the numerator came from here.
+    games = pd.to_numeric(sub.get("pbp_gp"), errors="coerce")
+    for column, source in DEFENSE_COUNTS.items():
         if source in sub.columns:
-            sub[rate] = (100 * pd.to_numeric(sub[source], errors="coerce")
-                         / poss.where(poss > 0)).round(2)
-    sub = sub.drop(columns=[c for c in DEFENSE_RATES.values() if c in sub.columns])
+            sub[column] = (pd.to_numeric(sub[source], errors="coerce")
+                           / games.where(games > 0)).round(2)
+    sub = sub.drop(columns=[c for c in ["pbp_gp", *DEFENSE_COUNTS.values()]
+                            if c in sub.columns])
 
     return rows.merge(sub, on=["season", "player_id"], how="left")
 

@@ -38,10 +38,26 @@ export type PlayerSeason = {
   season: string;
 };
 
+/** How much of a league is on disk. Stated on the landing page, which is why
+ *  it rides along with league discovery rather than costing a second request. */
+export type LeagueCoverage = {
+  seasons: number;
+  first_season: string | null;
+  last_season: string | null;
+  season_format?: "range" | "year";
+  players: number;
+  /** Rows in the players table, which is what the Explorer pages through. */
+  player_seasons: number;
+  /** Located shot attempts, or null for a league with no shot file. */
+  shots: number | null;
+};
+
 export type LeagueInfo = {
   key: LeagueKey;
   label: string;
   available: boolean;
+  /** Null when the league has no data yet. */
+  coverage?: LeagueCoverage | null;
 };
 
 export type Meta = {
@@ -181,6 +197,14 @@ export const api = {
 
   explorer: (body: any) =>
     fetch(`${BASE}/explorer`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(body),
+    }).then((r) => j<any>(r)),
+
+  /** Every qualified row, but only the columns being plotted. */
+  chart: (body: any) =>
+    fetch(`${BASE}/chart`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify(body),

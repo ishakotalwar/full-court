@@ -30,7 +30,8 @@ class Filter(BaseModel):
     value2: float | None = None  # upper bound for "between"
 
 
-class ExplorerRequest(BaseModel):
+class Query(BaseModel):
+    """What both endpoints below narrow the league down with."""
     subject: str = "players"
     league: str | None = None
     season_from: str | None = None
@@ -43,10 +44,27 @@ class ExplorerRequest(BaseModel):
     # Counting stats are filtered and sorted on this basis too, so "25+ points"
     # means 25 per whatever the caller picked.
     per: str = "game"
+
+
+class ExplorerRequest(Query):
     sort: str = "pts"
     dir: str = "desc"
     page: int = 1
     page_size: int = 25
+
+
+class ChartRequest(Query):
+    """One scatter: which two columns to plot, and what to encode on top."""
+    x: str
+    y: str
+    color: str | None = None
+    size: str | None = None
+
+
+# A scatter drawn in SVG, which is what keeps the point labels placeable. Past
+# a few thousand marks the browser is the limit rather than the data, so a
+# bigger pool is sampled down to this rather than truncated — see `_sample`.
+MAX_POINTS = 3000
 
 
 # What a team-season can be filtered and sorted on, in the order a table
@@ -93,8 +111,10 @@ def fields(league: str | None = None, subject: str = "players"):
     }
 
 
-@router.post("/explorer")
-def explorer(req: ExplorerRequest):
+def _filtered(req: Query) -> tuple[pd.DataFrame, bool]:
+    """The league narrowed to what the request asks for, and whether the rows
+    are teams. Shared so a chart and a table of the same query never disagree
+    about which seasons qualified."""
     lg = leagues.get(req.league)
     teams_mode = req.subject == "teams"
     if teams_mode:
@@ -143,6 +163,14 @@ def explorer(req: ExplorerRequest):
             lo, hi = min(f.value, hi), max(f.value, hi)
             df = df[col.between(lo, hi)]
 
+    return df, teams_mode
+
+
+@router.post("/explorer")
+def explorer(req: ExplorerRequest):
+    df, teams_mode = _filtered(req)
+    lg = leagues.get(req.league)
+
     total = int(len(df))
     fallback = "net" if teams_mode else "pts"
     sort_key = req.sort if req.sort in df.columns else fallback
@@ -177,4 +205,52 @@ def explorer(req: ExplorerRequest):
         "pages": max(1, -(-total // page_size)),
         "columns": [c for c in ordered if c != "player_id"],
         "rows": data.records(rows[ordered]),
+    })
+
+
+def _sample(df: pd.DataFrame, cap: int, by: str) -> pd.DataFrame:
+    """At most `cap` rows, spread evenly across the range of `by`.
+
+    Taking the head of a sorted frame would cut the bottom off the cloud and
+    draw a flat edge that is an artifact of the cap rather than anything in
+    the data. Sorting and then stepping through keeps the shape of the
+    distribution and both of its ends.
+    """
+    if len(df) <= cap:
+        return df
+    ordered = df.sort_values(by, kind="mergesort")
+    step = len(ordered) / cap
+    keep = [int(i * step) for i in range(cap)]
+    return ordered.iloc[keep]
+
+
+@router.post("/chart")
+def chart(req: ChartRequest):
+    """The points for one scatter, and nothing else.
+
+    The explorer returns a page of every column; a chart needs every row of
+    four columns. Sending only what is plotted is what makes the whole
+    qualified pool affordable instead of a page of it.
+    """
+    df, teams_mode = _filtered(req)
+
+    label = "team_name" if teams_mode else "player_name"
+    wanted = [req.x, req.y] + [c for c in (req.color, req.size) if c]
+    for column in wanted:
+        if column not in df.columns:
+            raise HTTPException(400, f"Unknown field {column!r}")
+
+    # A point needs both of its coordinates; anything missing one cannot be
+    # placed and is dropped here rather than sent as a null to be skipped.
+    df = df.dropna(subset=[req.x, req.y])
+    total = int(len(df))
+    df = _sample(df, MAX_POINTS, req.y)
+
+    keep = [c for c in dict.fromkeys([label, "season", *wanted]) if c in df.columns]
+    return analytics.json_safe({
+        "subject": "teams" if teams_mode else "players",
+        "label": label,
+        "total": total,
+        "shown": int(len(df)),
+        "rows": data.records(df[keep]),
     })

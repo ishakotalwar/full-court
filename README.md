@@ -15,6 +15,7 @@ NBA and WNBA analytics. Live at <https://full-court-six.vercel.app>
 - WOWY: what a team did with and without any group of players
 - Impact ratings: RAPM, 3-year RAPM, box-prior RAPM, PER, on/off
 - Explorer over every player-season
+- Chart builder: any metric against any other
 - Ask: questions in plain English
 
 Counting stats read per game, per 36 minutes, or per 75 or 100 possessions.

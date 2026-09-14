@@ -7,8 +7,6 @@ import { Plot } from "@/components/ui/Plot";
 import { playerAvatar } from "@/components/ui/Avatar";
 import { formatValue, label, shortLabel, sortMetrics } from "@/lib/metrics";
 import { cn } from "@/lib/cn";
-import { BLANK } from "@/lib/labels";
-import { themeAlpha, themeColor, useTheme } from "@/lib/theme";
 import { formatSeason } from "@/lib/season";
 
 type Filt = { metric: string; op: string; value: number; value2?: number };
@@ -307,10 +305,6 @@ export function Explorer({ meta, seed }: { meta: Meta; seed?: any }) {
         </CardBody>
       </Card>
 
-      {data && data.rows?.length > 0 && (
-        <ExplorerChart rows={data.rows} subject={subject} sort={sort} metrics={metricKeys} />
-      )}
-
       <Card>
         <CardHeader
           title={data
@@ -345,14 +339,18 @@ export function Explorer({ meta, seed }: { meta: Meta; seed?: any }) {
             <div className="px-5 py-8 text-sm text-mute">Nothing matched those conditions.</div>
           ) : (
             <div className="overflow-x-auto">
-              <table className="w-full text-sm">
+              {/* `min-w-full` rather than `w-full`: with every metric given a
+                  column the table is wider than the card, so it takes its
+                  natural width and scrolls sideways instead of squeezing all
+                  of them into the visible one. */}
+              <table className="min-w-full text-sm">
                 <thead>
                   <tr className="text-left text-xs uppercase tracking-wider text-mute">
                     {columns.map((c) => (
                       <th
                         key={c}
                         className={cn(
-                          "px-3 py-2 font-medium",
+                          "whitespace-nowrap px-3 py-2 font-medium",
                           isText(c) ? "text-left" : "text-right"
                         )}
                       >
@@ -407,235 +405,5 @@ export function Explorer({ meta, seed }: { meta: Meta; seed?: any }) {
         </CardBody>
       </Card>
     </div>
-  );
-}
-
-
-/**
- * The page of results, plotted.
- *
- * A table answers "which rows matched"; a chart answers "what does the field
- * look like", which is the question a filter stack is usually a proxy for.
- * Both axes are pickable, defaulting to the column the query sorted on
- * against the first condition it filtered on — the two the user already said
- * they cared about.
- */
-function ExplorerChart({
-  rows,
-  subject,
-  sort,
-  metrics,
-}: {
-  rows: any[];
-  subject: "players" | "teams";
-  sort: string;
-  metrics: string[];
-}) {
-  const numeric = metrics.filter((m) => rows.some((r) => typeof r[m] === "number"));
-  // Plotly cannot read CSS variables, so the colors below are sampled at
-  // render time and this re-runs them when the palette changes.
-  const theme = useTheme();
-  const [x, setX] = useState<string>("");
-  const [y, setY] = useState<string>("");
-
-  // Re-seeded whenever the field changes shape, so a subject switch does not
-  // leave an axis pointing at a column the new rows do not have.
-  useEffect(() => {
-    if (!numeric.length) return;
-    setY((cur) => (numeric.includes(cur) ? cur : (numeric.includes(sort) ? sort : numeric[0])));
-    setX((cur) =>
-      numeric.includes(cur) && cur !== (numeric.includes(sort) ? sort : numeric[0])
-        ? cur
-        : numeric.find((m) => m !== (numeric.includes(sort) ? sort : numeric[0])) ?? numeric[0]
-    );
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [numeric.join(","), sort]);
-
-  const name = (r: any) =>
-    subject === "teams" ? r.team_name : r.player_name;
-
-  // A short year, for telling two seasons of the same team or player apart.
-  const year = (season: any) => {
-    const shown = formatSeason(season, undefined) ?? String(season ?? "");
-    const digits = shown.match(/(\d{2})(?!.*\d)/);
-    return digits ? `'${digits[1]}` : shown;
-  };
-
-  const plotted = useMemo(
-    () => rows.filter((r) => typeof r[x] === "number" && typeof r[y] === "number"),
-    [rows, x, y]
-  );
-
-  // The middle of each axis, drawn as a crosshair so a point can be read as
-  // above or below the field on both at once rather than against the ticks.
-  const mid = useMemo(() => {
-    const middle = (vals: number[]) => {
-      if (!vals.length) return null;
-      const sorted = [...vals].sort((a, b) => a - b);
-      const h = Math.floor(sorted.length / 2);
-      return sorted.length % 2 ? sorted[h] : (sorted[h - 1] + sorted[h]) / 2;
-    };
-    return { x: middle(plotted.map((r) => r[x])), y: middle(plotted.map((r) => r[y])) };
-  }, [plotted, x, y]);
-
-  // Least squares through the cloud, plus how much of it the line accounts
-  // for. Two metrics on a scatter are usually being asked how related they
-  // are, and a fit answers that where reading the drift by eye does not.
-  const fit = useMemo(() => {
-    const n = plotted.length;
-    if (n < 3 || x === y) return null;
-    const xs = plotted.map((r) => r[x]);
-    const ys = plotted.map((r) => r[y]);
-    const mx = xs.reduce((a, b) => a + b, 0) / n;
-    const my = ys.reduce((a, b) => a + b, 0) / n;
-    let sxy = 0, sxx = 0, syy = 0;
-    for (let i = 0; i < n; i++) {
-      sxy += (xs[i] - mx) * (ys[i] - my);
-      sxx += (xs[i] - mx) ** 2;
-      syy += (ys[i] - my) ** 2;
-    }
-    if (!sxx || !syy) return null;
-    const slope = sxy / sxx;
-    const lo = Math.min(...xs);
-    const hi = Math.max(...xs);
-    return {
-      x: [lo, hi],
-      y: [my + slope * (lo - mx), my + slope * (hi - mx)],
-      r: sxy / Math.sqrt(sxx * syy),
-    };
-  }, [plotted, x, y]);
-
-  const traces = useMemo(() => {
-    if (!x || !y || !plotted.length) return [];
-
-    // Labelled: the points furthest from the middle of the cloud, measured in
-    // each axis's own spread so neither axis's units decide it. That picks the
-    // corners a reader is actually looking for — a 73-win season, a defense
-    // nobody else matched — rather than the top of one column.
-    const spread = (vals: number[]) => {
-      const m = vals.reduce((a, b) => a + b, 0) / vals.length;
-      const sd = Math.sqrt(vals.reduce((a, b) => a + (b - m) ** 2, 0) / vals.length);
-      return { m, sd: sd || 1 };
-    };
-    const sx = spread(plotted.map((r) => r[x]));
-    const sy = spread(plotted.map((r) => r[y]));
-    const far = (r: any) =>
-      ((r[x] - sx.m) / sx.sd) ** 2 + ((r[y] - sy.m) / sy.sd) ** 2;
-    const named = new Set([...plotted].sort((a, b) => far(b) - far(a)).slice(0, 6));
-
-    // Two seasons of one team look like one team labelled twice, so a name is
-    // given its year only when the labelled set holds it more than once.
-    const seen = new Map<string, number>();
-    for (const r of named) seen.set(name(r), (seen.get(name(r)) ?? 0) + 1);
-    const labelFor = (r: any) =>
-      (seen.get(name(r)) ?? 0) > 1 ? `${name(r)} ${year(r.season)}` : name(r);
-
-    const ink = themeColor("ink", "#cbd3de");
-    const accent = themeColor("accent", "#ff6a3d");
-    const accent2 = themeColor("accent2", "#4dabff");
-    const panel = themeColor("panel", "#121619");
-
-    return [
-      // Under the points: a reference, not a result.
-      ...(fit
-        ? [{
-            type: "scatter",
-            mode: "lines",
-            x: fit.x,
-            y: fit.y,
-            hoverinfo: "skip",
-            line: { color: themeColor("mute", "#6b7685"), width: 1, dash: "dot" },
-          }]
-        : []),
-      {
-        type: "scatter",
-        mode: "markers+text",
-        x: plotted.map((r) => r[x]),
-        y: plotted.map((r) => r[y]),
-        text: plotted.map((r) => (named.has(r) ? labelFor(r) : BLANK)),
-        textposition: "top center",
-        textfont: { size: 11, color: ink },
-        cliponaxis: false,
-        hovertext: plotted.map((r) => `${name(r)} · ${formatSeason(r.season, undefined)}`),
-        customdata: plotted.map((r) => [r[x], r[y]]),
-        hovertemplate:
-          "<b>%{hovertext}</b><br>" +
-          `${shortLabel(x)} %{customdata[0]}<br>${shortLabel(y)} %{customdata[1]}` +
-          "<extra></extra>",
-        marker: {
-          size: plotted.map((r) => (named.has(r) ? 12 : 9)),
-          // The app's own two accents, so the ramp changes with the theme
-          // instead of staying the default palette's blue and orange.
-          color: plotted.map((r) => r[y]),
-          colorscale: [[0, accent2], [1, accent]],
-          opacity: 0.92,
-          line: { color: panel, width: 1.5 },
-        },
-      },
-    ];
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [plotted, x, y, subject, fit, theme]);
-
-  const layout = useMemo(() => {
-    const faint = themeAlpha("mute", 0.28, "rgba(120,130,145,0.28)");
-    const line = (axis: "x" | "y", at: number) => ({
-      type: "line",
-      xref: axis === "x" ? "x" : "paper",
-      yref: axis === "x" ? "paper" : "y",
-      x0: axis === "x" ? at : 0,
-      x1: axis === "x" ? at : 1,
-      y0: axis === "x" ? 0 : at,
-      y1: axis === "x" ? 1 : at,
-      line: { color: faint, width: 1, dash: "dash" },
-      layer: "below",
-    });
-    return {
-      // Room at the top for a label on the highest point, which sits above its
-      // dot and is drawn unclipped.
-      margin: { t: 28, r: 16, b: 44, l: 56 },
-      showlegend: false,
-      hovermode: "closest",
-      xaxis: { title: `${label(x)} →`, zeroline: false },
-      yaxis: { title: `${label(y)} →`, zeroline: false },
-      shapes: [
-        ...(mid.x != null ? [line("x", mid.x)] : []),
-        ...(mid.y != null ? [line("y", mid.y)] : []),
-      ],
-    };
-  }, [x, y, mid, fit, theme]);
-
-  if (numeric.length < 2) return null;
-
-  const axis = (value: string, onChange: (v: string) => void) => (
-    <div className="w-44">
-      <Select
-        value={value}
-        onChange={onChange}
-        options={numeric.map((m) => ({ value: m, label: label(m) }))}
-      />
-    </div>
-  );
-
-  return (
-    <Card>
-      <CardHeader
-        title="This page, plotted"
-        subtitle={
-          fit
-            ? `${plotted.length} rows · r = ${fit.r.toFixed(2)} · dashed lines are the medians`
-            : `${plotted.length} rows`
-        }
-        right={
-          <div className="flex items-center gap-2 text-xs text-mute">
-            {axis(x, setX)}
-            <span>against</span>
-            {axis(y, setY)}
-          </div>
-        }
-      />
-      <CardBody>
-        <Plot data={traces as any} layout={layout as any} height={380} />
-      </CardBody>
-    </Card>
   );
 }

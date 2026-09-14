@@ -43,22 +43,17 @@ METRIC_ALIASES: dict[str, str] = {
     "usg_pct": "usg_pct",
     "offensive rating": "ortg", "ortg": "ortg",
     "defensive rating": "drtg", "drtg": "drtg",
-    # Per-possession defence, from the play-by-play detail. These are rates
-    # against possessions actually defended, which is what makes them
-    # comparable between a starter and a reserve.
-    "blocks per 100": "blk_100", "blocks per possession": "blk_100",
-    "rim blocks": "blk_rim_100", "rim blocks per 100": "blk_rim_100",
-    "blocks at the rim": "blk_rim_100",
-    "steals per 100": "stl_100", "steals per possession": "stl_100",
-    "fouls per 100": "foul_100", "fouls": "foul_100", "fouling": "foul_100",
+    # From the play-by-play detail. A rate basis is a separate part of the
+    # question ("per 100"), so these name the stat and let it set the basis
+    # rather than being a second, pre-divided copy of blocks and steals.
+    "rim blocks": "blk_rim", "blocks at the rim": "blk_rim",
+    "fouls": "fouls", "fouling": "fouls", "personal fouls": "fouls",
     "on court defensive rating": "on_def_rtg", "on-court defensive rating": "on_def_rtg",
     "points allowed": "on_def_rtg",
-    # How people describe a role rather than name a column. Rim protection and
-    # ball pressure now reach the per-possession versions rather than the
-    # per-game counts they used to settle for.
-    "rim protector": "blk_rim_100", "rim protectors": "blk_rim_100",
-    "rim protection": "blk_rim_100",
-    "shot blocker": "blk_100", "shot blockers": "blk_100", "shot blocking": "blk_100",
+    # How people describe a role rather than name a column.
+    "rim protector": "blk_rim", "rim protectors": "blk_rim",
+    "rim protection": "blk_rim",
+    "shot blocker": "blk", "shot blockers": "blk", "shot blocking": "blk",
     "floor general": "ast", "floor generals": "ast", "playmaker": "ast",
     "playmakers": "ast", "passer": "ast", "passers": "ast",
     "distributor": "ast", "distributors": "ast",
@@ -69,7 +64,7 @@ METRIC_ALIASES: dict[str, str] = {
     "three-point shooter": "three_pct", "three-point shooters": "three_pct",
     "scorer": "pts", "scorers": "pts", "bucket getter": "pts",
     "rebounder": "reb", "rebounders": "reb", "glass cleaner": "reb",
-    "ball hawk": "stl_100", "ball hawks": "stl_100", "thief": "stl_100",
+    "ball hawk": "stl", "ball hawks": "stl", "thief": "stl",
     "free throw shooter": "ft_pct", "free throw shooters": "ft_pct",
 }
 
@@ -81,9 +76,9 @@ SUPERLATIVE_CATEGORIES: dict[str, tuple[str, str | None]] = {
     # Defence used to fall back to blocks per game with an apology attached.
     # There is a defensive fit to rank on now, so these route to the impact
     # board instead — see IMPACT_WORDS in ask_parse.
-    "defensive": ("blk_rim_100", None),
-    "defense": ("blk_rim_100", None),
-    "defenders": ("blk_rim_100", None),
+    "defensive": ("blk_rim", None),
+    "defense": ("blk_rim", None),
+    "defenders": ("blk_rim", None),
     "offensive": ("pts", None),
     "scoring": ("pts", None),
     "shooting": ("ts_pct", None),

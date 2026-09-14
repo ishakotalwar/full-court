@@ -5,8 +5,9 @@ import { cn } from "./lib/cn";
 import { PlayersSection } from "./components/panels/PlayersSection";
 import { TeamsSection } from "./components/panels/TeamsSection";
 import { Explorer } from "./components/panels/Explorer";
+import { Charts } from "./components/panels/Charts";
 import { AskFullCourt } from "@/components/AskFullCourt";
-import { Landing } from "@/components/Landing";
+import { Landing, type Destination } from "@/components/Landing";
 import { Glossary } from "@/components/Glossary";
 import { PredictCalendar } from "@/components/panels/PredictCalendar";
 import { PredictTeams } from "@/components/panels/PredictTeams";
@@ -29,6 +30,7 @@ const TABS = [
   { v: "players", label: "Players", group: "stats" },
   { v: "teams", label: "Teams", group: "stats" },
   { v: "explorer", label: "Explorer", group: "explorer" },
+  { v: "charts", label: "Charts", group: "explorer" },
 ] as const;
 
 /** Ask Full Court names pages after the feature it answered with. Each one
@@ -59,6 +61,8 @@ export default function App() {
   // The structured query Ask Full Court last ran, handed to whichever panel it
   // points at so "Open in …" lands on the answer instead of an empty form.
   const [seed, setSeed] = useState<{ page: string; state: any } | null>(null);
+  // Where the landing sent us, when its tile named a view inside a tab.
+  const [entry, setEntry] = useState<{ tab: string; view?: string } | null>(null);
   const [leagues, setLeagues] = useState<LeagueInfo[] | null>(null);
   const [league, setLeague] = useState<LeagueKey | null>(null);
   const [meta, setMeta] = useState<Meta | null>(null);
@@ -85,8 +89,10 @@ export default function App() {
   }, [league]);
 
   const seedFor = (page: string) => (seed?.page === page ? seed.state : undefined);
-  /** The view a section should open on, when Ask pointed at one of its pages. */
+  /** The view a section should open on: whichever of the landing or Ask Full
+   *  Court pointed at one of its pages. */
   const viewFor = (tabName: string) => {
+    if (entry?.tab === tabName && entry.view) return entry.view;
     const route = seed ? PAGE_ROUTES[seed.page] : undefined;
     return route?.tab === tabName ? route.view : undefined;
   };
@@ -95,10 +101,23 @@ export default function App() {
     setMode(next);
     setTab(DEFAULT_TAB[next]);
     setSeed(null);
+    setEntry(null);
+  };
+
+  /** A landing tile names a page, not just a half of the app, so entering
+   *  lands on it rather than on whatever that half opens with. */
+  const enter = ({ mode: next, tab: dest, view }: Destination) => {
+    setMode(next);
+    setTab(dest);
+    setSeed(null);
+    setEntry({ tab: dest, view });
   };
 
   if (err) return <Bootstrap state="error" msg={err} leagues={leagues} league={league} onLeague={setLeague} />;
-  if (!meta || !league) return <Bootstrap state="loading" />;
+  // The landing reads only league discovery, so it can be up before the much
+  // larger per-league metadata is — which also means switching league on it
+  // costs nothing visible, and prefetches what the app opens with.
+  if (!leagues || !league) return <Bootstrap state="loading" />;
 
   if (mode === null) {
     return (
@@ -106,10 +125,12 @@ export default function App() {
         <div className="absolute right-5 top-5">
           <ThemeToggle />
         </div>
-        <Landing meta={meta} onPick={switchMode} />
+        <Landing leagues={leagues} league={league} onLeague={setLeague} onPick={enter} />
       </div>
     );
   }
+
+  if (!meta) return <Bootstrap state="loading" />;
 
   const tabs = mode === "stats" ? TABS : PREDICT_TABS;
 
@@ -170,6 +191,9 @@ export default function App() {
           </Tabs.Content>
           <Tabs.Content value="explorer">
             <Explorer meta={meta} seed={seedFor("explorer")} />
+          </Tabs.Content>
+          <Tabs.Content value="charts">
+            <Charts meta={meta} />
           </Tabs.Content>
           <Tabs.Content value="predict-calendar"><PredictCalendar meta={meta} /></Tabs.Content>
           <Tabs.Content value="predict-teams"><PredictTeams meta={meta} /></Tabs.Content>

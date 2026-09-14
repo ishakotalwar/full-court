@@ -14,16 +14,46 @@ def health():
     return {"ok": True}
 
 
+def _coverage(lg: leagues.League) -> dict | None:
+    """How much of a league is on disk, in the terms the landing page states it.
+
+    Everything here is either already cached by the availability check above or
+    read from a Parquet footer, so describing both leagues costs no more than
+    discovering them.
+    """
+    try:
+        seasons = data.seasons(lg)
+        players = data.player_names(lg)
+    except Exception:
+        return None
+    return {
+        "seasons": len(seasons),
+        "first_season": seasons[0] if seasons else None,
+        "last_season": seasons[-1] if seasons else None,
+        "season_format": lg.season_format,
+        "players": len(players),
+        # A row of the players table is one player-season, which is also one
+        # row of the Explorer — the same number the visitor will page through.
+        "player_seasons": len(data.players(lg)),
+        # None for a league with no shot file; the tile drops out rather than
+        # reading zero.
+        "shots": data.row_count("shots", lg),
+    }
+
+
 @router.get("/leagues")
 def league_list():
-    """Which leagues exist and which have Parquet on disk."""
-    return {
-        "leagues": [
-            {"key": lg.key, "label": lg.label, "available": data.has_data(lg)}
-            for lg in leagues.LEAGUES.values()
-        ],
-        "default": leagues.DEFAULT.key,
-    }
+    """Which leagues exist, which have Parquet on disk, and how much of it."""
+    out = []
+    for lg in leagues.LEAGUES.values():
+        available = data.has_data(lg)
+        out.append({
+            "key": lg.key,
+            "label": lg.label,
+            "available": available,
+            "coverage": _coverage(lg) if available else None,
+        })
+    return {"leagues": out, "default": leagues.DEFAULT.key}
 
 
 @router.get("/meta")
