@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { api, type Meta } from "@/lib/api";
 import { Card, CardBody, CardHeader } from "@/components/ui/Card";
+import { useQueryState } from "@/lib/url";
 import { Select } from "@/components/ui/Select";
 import { Plot, pickColor } from "@/components/ui/Plot";
 import { cn } from "@/lib/cn";
@@ -42,7 +43,7 @@ const COLS: Col[] = [
 ];
 
 export function TeamCompare({ meta }: { meta: Meta }) {
-  const [season, setSeason] = useState("");
+  const [season, setSeason] = useQueryState("season");
   const [data, setData] = useState<any>(null);
   const [err, setErr] = useState<string | null>(null);
   const [sort, setSort] = useState<{ key: string; dir: 1 | -1 }>({ key: "net", dir: -1 });

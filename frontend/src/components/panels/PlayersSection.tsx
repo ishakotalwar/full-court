@@ -1,4 +1,3 @@
-import { useEffect, useState } from "react";
 import type { Meta } from "@/lib/api";
 import { ViewTabs } from "@/components/ui/ViewTabs";
 import { Players } from "./Players";
@@ -20,26 +19,23 @@ const VIEWS = [
 export function PlayersSection({
   meta,
   view,
-  seedFor,
+  onView,
 }: {
   meta: Meta;
-  /** Which view to open on, when Ask Full Court points at one of them. */
+  /** Which view is open — a segment of the URL, not state held here. */
   view?: string;
-  seedFor: (page: string) => any;
+  onView: (view: string) => void;
 }) {
-  const [active, setActive] = useState<string>(view ?? "overview");
-  useEffect(() => {
-    if (view) setActive(view);
-  }, [view]);
+  const active = view ?? "overview";
 
   return (
     <div className="space-y-4">
-      <ViewTabs views={VIEWS} value={active} onChange={setActive} />
+      <ViewTabs views={VIEWS} value={active} onChange={onView} />
       {active === "overview" && <Players meta={meta} />}
-      {active === "compare" && <Compare meta={meta} seed={seedFor("compare")} />}
-      {active === "impact" && <Ratings meta={meta} seed={seedFor("impact")} />}
-      {active === "similar" && <Similar meta={meta} seed={seedFor("similarity")} />}
-      {active === "shots" && <ShotAnalysis meta={meta} seed={seedFor("shots")} />}
+      {active === "compare" && <Compare meta={meta} />}
+      {active === "impact" && <Ratings meta={meta} />}
+      {active === "similar" && <Similar meta={meta} />}
+      {active === "shots" && <ShotAnalysis meta={meta} />}
     </div>
   );
 }

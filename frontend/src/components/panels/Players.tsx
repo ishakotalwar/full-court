@@ -9,6 +9,7 @@ import { PlayerSeasonSelector, emptySelection } from "@/components/ui/PlayerSeas
 import { formatValue, label, ordinal, shortLabel, sortMetrics } from "@/lib/metrics";
 import { cn } from "@/lib/cn";
 import { formatSeason } from "@/lib/season";
+import { useQueryPlayer, useQueryState } from "@/lib/url";
 
 /** Percentile → color. Deliberately three steps, not a gradient: the point is
  *  "clearly above / around / clearly below average", not a precise reading. */
@@ -20,12 +21,12 @@ function pctTone(p: number | null): string {
 }
 
 export function Players({ meta }: { meta: Meta }) {
-  const [sel, setSel] = useState<PlayerSeason>(emptySelection);
+  const [sel, setSel] = useQueryPlayer(meta);
   const [info, setInfo] = useState<PlayerInfo | null>(null);
   const [season, setSeason] = useState<any>(null);
   const [career, setCareer] = useState<any>(null);
-  const [trendMetric, setTrendMetric] = useState("pts");
-  const [per, setPer] = useState("game");
+  const [trendMetric, setTrendMetric] = useQueryState("trend", "pts");
+  const [per, setPer] = useQueryState("per", "game");
   const [err, setErr] = useState<string | null>(null);
 
   useEffect(() => {

@@ -1,13 +1,22 @@
 import { Fragment, useEffect, useState } from "react";
+import {
+  Navigate,
+  Route,
+  Routes,
+  useLocation,
+  useNavigate,
+  useParams,
+} from "react-router-dom";
 import * as Tabs from "@radix-ui/react-tabs";
 import { api, type LeagueInfo, type LeagueKey, type Meta } from "./lib/api";
 import { cn } from "./lib/cn";
+import { pathTo, resolve, type Mode } from "@/lib/routes";
 import { PlayersSection } from "./components/panels/PlayersSection";
 import { TeamsSection } from "./components/panels/TeamsSection";
 import { Explorer } from "./components/panels/Explorer";
 import { Charts } from "./components/panels/Charts";
 import { AskFullCourt } from "@/components/AskFullCourt";
-import { Landing, type Destination } from "@/components/Landing";
+import { Landing } from "@/components/Landing";
 import { Glossary } from "@/components/Glossary";
 import { PredictCalendar } from "@/components/panels/PredictCalendar";
 import { PredictTeams } from "@/components/panels/PredictTeams";
@@ -23,14 +32,17 @@ import {
 } from "@/lib/theme";
 
 /** `group` only draws a separator — it is not a second click. */
-type Mode = "stats" | "predictions";
-
-/** Four subjects. Each one's pages switch inside it, not up here. */
 const TABS = [
   { v: "players", label: "Players", group: "stats" },
   { v: "teams", label: "Teams", group: "stats" },
   { v: "explorer", label: "Explorer", group: "explorer" },
   { v: "charts", label: "Charts", group: "explorer" },
+] as const;
+
+const PREDICT_TABS = [
+  { v: "predict-calendar", label: "Games", group: "predict" },
+  { v: "predict-teams", label: "Teams", group: "predict" },
+  { v: "predict-players", label: "Players", group: "predict" },
 ] as const;
 
 /** Ask Full Court names pages after the feature it answered with. Each one
@@ -46,101 +58,114 @@ const PAGE_ROUTES: Record<string, { tab: string; view?: string }> = {
   explorer: { tab: "explorer" },
 };
 
-const PREDICT_TABS = [
-  { v: "predict-calendar", label: "Games", group: "predict" },
-  { v: "predict-teams", label: "Teams", group: "predict" },
-  { v: "predict-players", label: "Players", group: "predict" },
-] as const;
-
 const DEFAULT_TAB: Record<Mode, string> = {
   stats: "players",
   predictions: "predict-calendar",
 };
 
+/**
+ * League discovery, then the router.
+ *
+ * Which leagues exist is the one thing every page needs and no page can ask
+ * for twice, so it is fetched here and handed down. Everything after it — the
+ * league you are looking at, the page, and what that page is showing — is read
+ * from the URL rather than held in state, so a link is the whole address.
+ */
 export default function App() {
-  // null until the visitor picks a side on the landing screen.
-  const [mode, setMode] = useState<Mode | null>(null);
-  const [tab, setTab] = useState<string>("players");
-  // The structured query Ask Full Court last ran, handed to whichever panel it
-  // points at so "Open in …" lands on the answer instead of an empty form.
-  const [seed, setSeed] = useState<{ page: string; state: any } | null>(null);
-  // Where the landing sent us, when its tile named a view inside a tab.
-  const [entry, setEntry] = useState<{ tab: string; view?: string } | null>(null);
   const [leagues, setLeagues] = useState<LeagueInfo[] | null>(null);
-  const [league, setLeague] = useState<LeagueKey | null>(null);
-  const [meta, setMeta] = useState<Meta | null>(null);
   const [err, setErr] = useState<string | null>(null);
 
-  // Which leagues exist, and which one to open on.
   useEffect(() => {
     api
       .leagues()
-      .then(({ leagues, default: dflt }) => {
-        setLeagues(leagues);
-        const first = leagues.find((l) => l.available)?.key ?? dflt;
-        setLeague(first);
-      })
+      .then(({ leagues }) => setLeagues(leagues))
       .catch((e) => setErr(e.message));
   }, []);
 
-  // Reload metadata whenever the league changes.
+  if (err) return <Bootstrap state="error" msg={err} />;
+  if (!leagues) return <Bootstrap state="loading" />;
+
+  return (
+    <Routes>
+      <Route path="/" element={<LandingScreen leagues={leagues} />} />
+      <Route path=":league/:section" element={<Shell leagues={leagues} />} />
+      <Route path=":league/:section/:view" element={<Shell leagues={leagues} />} />
+      {/* Anything else is a typo or a dead bookmark; the start page is the
+          only honest answer, and it is one click from everywhere. */}
+      <Route path="*" element={<Navigate to="/" replace />} />
+    </Routes>
+  );
+}
+
+/** The start page. Its league picker is local — nothing has been opened yet,
+ *  so the choice only decides which numbers show and where a tile leads. */
+function LandingScreen({ leagues }: { leagues: LeagueInfo[] }) {
+  const navigate = useNavigate();
+  const first = leagues.find((l) => l.available)?.key ?? leagues[0]?.key ?? "nba";
+  const [league, setLeague] = useState<LeagueKey>(first);
+
+  return (
+    <div className="min-h-screen bg-bg">
+      <div className="absolute right-5 top-5">
+        <ThemeToggle />
+      </div>
+      <Landing
+        leagues={leagues}
+        league={league}
+        onLeague={setLeague}
+        onPick={(dest) => navigate(pathTo(league, dest.tab, dest.view))}
+      />
+    </div>
+  );
+}
+
+/** Everything behind the landing page: one league's data, one page of it. */
+function Shell({ leagues }: { leagues: LeagueInfo[] }) {
+  const params = useParams();
+  const location = useLocation();
+  const navigate = useNavigate();
+  const route = resolve(params, leagues.map((l) => l.key));
+
+  const [meta, setMeta] = useState<Meta | null>(null);
+  const [err, setErr] = useState<string | null>(null);
+  // Explorer's answer is a whole filter stack rather than a handful of named
+  // values, so that one page still takes its state in memory. Every other page
+  // reads it out of the URL, which is what `searchFor` below writes.
+  const [seed, setSeed] = useState<{ page: string; state: any } | null>(null);
+
+  // Reload metadata whenever the league in the URL changes.
   useEffect(() => {
-    if (!league) return;
     setMeta(null);
     setErr(null);
-    // An answer was computed in the league it was asked in. The page it pointed
-    // at is still the right page, so the route survives; the values it would
-    // fill in are the other league's team and players, so those do not.
-    setSeed((current) => (current ? { page: current.page, state: null } : null));
-    api.meta(league).then(setMeta).catch((e) => setErr(e.message));
-  }, [league]);
-
-  const seedFor = (page: string) => (seed?.page === page ? seed.state : undefined);
-  /** The view a section should open on: whichever of the landing or Ask Full
-   *  Court pointed at one of its pages. */
-  const viewFor = (tabName: string) => {
-    if (entry?.tab === tabName && entry.view) return entry.view;
-    const route = seed ? PAGE_ROUTES[seed.page] : undefined;
-    return route?.tab === tabName ? route.view : undefined;
-  };
-
-  const switchMode = (next: Mode) => {
-    setMode(next);
-    setTab(DEFAULT_TAB[next]);
     setSeed(null);
-    setEntry(null);
-  };
+    api.meta(route.league).then(setMeta).catch((e) => setErr(e.message));
+  }, [route.league]);
 
-  /** A landing tile names a page, not just a half of the app, so entering
-   *  lands on it rather than on whatever that half opens with. */
-  const enter = ({ mode: next, tab: dest, view }: Destination) => {
-    setMode(next);
-    setTab(dest);
-    setSeed(null);
-    setEntry({ tab: dest, view });
-  };
-
-  if (err) return <Bootstrap state="error" msg={err} leagues={leagues} league={league} onLeague={setLeague} />;
-  // The landing reads only league discovery, so it can be up before the much
-  // larger per-league metadata is — which also means switching league on it
-  // costs nothing visible, and prefetches what the app opens with.
-  if (!leagues || !league) return <Bootstrap state="loading" />;
-
-  if (mode === null) {
-    return (
-      <div className="min-h-screen bg-bg">
-        <div className="absolute right-5 top-5">
-          <ThemeToggle />
-        </div>
-        <Landing leagues={leagues} league={league} onLeague={setLeague} onPick={enter} />
-      </div>
-    );
+  // A URL naming a page or a league we don't have still resolved to a real
+  // one; say so in the address bar rather than rendering something the URL
+  // didn't ask for. The query string rides along — it belongs to the panel.
+  if (location.pathname !== route.canonical) {
+    return <Navigate to={route.canonical + location.search} replace />;
   }
 
+  if (err) {
+    return (
+      <Bootstrap
+        state="error"
+        msg={err}
+        leagues={leagues}
+        league={route.league}
+        onLeague={(key) => navigate(pathTo(key, route.tab, route.view))}
+      />
+    );
+  }
   if (!meta) return <Bootstrap state="loading" />;
 
-  const tabs = mode === "stats" ? TABS : PREDICT_TABS;
-
+  const tabs = route.mode === "stats" ? TABS : PREDICT_TABS;
+  /** Going somewhere else drops the query string: it described the page being
+   *  left, and means nothing on the one being opened. */
+  const go = (tab: string, view?: string) =>
+    navigate(pathTo(route.league, tab, view));
 
   return (
     <div className="min-h-screen bg-bg">
@@ -149,7 +174,7 @@ export default function App() {
           <div className="flex items-center gap-3">
             <button
               type="button"
-              onClick={() => setMode(null)}
+              onClick={() => navigate("/")}
               className="text-left"
               title="Back to the start"
             >
@@ -159,16 +184,23 @@ export default function App() {
             </button>
           </div>
           <div className="flex items-center gap-3">
-            <ModeSwitch mode={mode} onSwitch={switchMode} />
+            <ModeSwitch
+              mode={route.mode}
+              onSwitch={(next) => go(DEFAULT_TAB[next])}
+            />
             <ThemeToggle />
-            <LeagueToggle leagues={leagues} active={league} onChange={setLeague} />
+            <LeagueToggle
+              leagues={leagues}
+              active={route.league}
+              onChange={(key) => navigate(pathTo(key, route.tab, route.view))}
+            />
             <Glossary />
           </div>
         </div>
       </header>
 
       <main className="mx-auto max-w-7xl px-6 py-6">
-        <Tabs.Root value={tab} onValueChange={setTab} key={league}>
+        <Tabs.Root value={route.tab} onValueChange={(v) => go(v)} key={route.league}>
           <Tabs.List className="no-scrollbar mb-6 flex items-center gap-5 overflow-x-auto border-b border-border">
             {tabs.map((t, i) => (
               <Fragment key={t.v}>
@@ -191,13 +223,21 @@ export default function App() {
           </Tabs.List>
 
           <Tabs.Content value="players">
-            <PlayersSection meta={meta} view={viewFor("players")} seedFor={seedFor} />
+            <PlayersSection
+              meta={meta}
+              view={route.view}
+              onView={(v) => go("players", v)}
+            />
           </Tabs.Content>
           <Tabs.Content value="teams">
-            <TeamsSection meta={meta} view={viewFor("teams")} seedFor={seedFor} />
+            <TeamsSection
+              meta={meta}
+              view={route.view}
+              onView={(v) => go("teams", v)}
+            />
           </Tabs.Content>
           <Tabs.Content value="explorer">
-            <Explorer meta={meta} seed={seedFor("explorer")} />
+            <Explorer meta={meta} seed={seed?.page === "explorer" ? seed.state : undefined} />
           </Tabs.Content>
           <Tabs.Content value="charts">
             <Charts meta={meta} />
@@ -210,21 +250,76 @@ export default function App() {
 
       <AskFullCourt
         meta={meta}
-        onNavigate={(page, navigate) => {
-          // Only ever switch to a tab that exists: a page name with no route
-          // used to be set as the tab itself, which left the app on a value no
-          // Tabs.Content matches — a blank screen with the nav still on it.
-          const route = PAGE_ROUTES[page];
-          if (!route) return;
-          setTab(route.tab);
-          setSeed(navigate ?? null);
-          // The landing's entry wins over a seed in `viewFor`, so clear it or
-          // an answer opened from the page you entered on lands on that view.
-          setEntry(null);
+        onNavigate={(page, answer) => {
+          const dest = PAGE_ROUTES[page];
+          if (!dest) return;
+          setSeed(answer ?? null);
+          const search = searchFor(page, answer?.state);
+          navigate(pathTo(route.league, dest.tab, dest.view) + search);
         }}
       />
     </div>
   );
+}
+
+
+/**
+ * An answer's state, as the query string of the page that shows it.
+ *
+ * Ask Full Court used to hand the panel an object in memory; now it writes the
+ * same thing into the URL, so "Open in Similarity" produces a link the visitor
+ * can keep — and the panel needs no second way of being told what to show.
+ */
+function searchFor(page: string, state: any): string {
+  if (!state) return "";
+  const q = new URLSearchParams();
+  const put = (key: string, value: unknown) => {
+    if (value !== undefined && value !== null && value !== "") q.set(key, String(value));
+  };
+  switch (page) {
+    case "similarity":
+      put("player", state.player_name);
+      put("season", state.season);
+      put("preset", state.preset);
+      put("k", state.k);
+      put("minGp", state.min_gp);
+      break;
+    case "shots":
+      put("player", state.player_name);
+      put("season", state.season);
+      break;
+    case "compare":
+      if (Array.isArray(state.players) && state.players.length) {
+        put(
+          "players",
+          state.players
+            .map((p: any) => `${p.player_name}~${p.season ?? ""}`)
+            .join(",")
+        );
+      }
+      break;
+    case "impact":
+      put("metric", state.metric);
+      put("season", state.season);
+      break;
+    case "teams":
+      put("metric", state.metric);
+      break;
+    case "lineups":
+      put("season", state.season);
+      put("team", state.team);
+      put("size", state.size);
+      break;
+    case "wowy":
+      put("season", state.season);
+      put("team", state.team);
+      if (Array.isArray(state.players) && state.players.length) {
+        put("players", state.players.join(","));
+      }
+      break;
+  }
+  const search = q.toString();
+  return search ? `?${search}` : "";
 }
 
 /** Moves between the stats half of the app and the predictions half. Present

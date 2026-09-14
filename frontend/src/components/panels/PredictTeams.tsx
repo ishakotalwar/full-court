@@ -5,6 +5,7 @@ import { ErrorNotice } from "@/components/ui/ErrorNotice";
 import { Plot } from "@/components/ui/Plot";
 import { Select } from "@/components/ui/Select";
 import { api, type Meta } from "@/lib/api";
+import { useQueryState } from "@/lib/url";
 import { cn } from "@/lib/cn";
 
 /**
@@ -15,16 +16,15 @@ import { cn } from "@/lib/cn";
 export function PredictTeams({ meta }: { meta: Meta }) {
   const [data, setData] = useState<any>(null);
   const [err, setErr] = useState<string | null>(null);
-  const [home, setHome] = useState("");
-  const [away, setAway] = useState("");
+  const [home, setHome] = useQueryState("home");
+  const [away, setAway] = useQueryState("away");
   const [matchup, setMatchup] = useState<any>(null);
 
   useEffect(() => {
     setData(null);
     setErr(null);
     setMatchup(null);
-    setHome("");
-    setAway("");
+    // The teams come from the URL, and changing league already cleared it.
     api.predictTeams(meta.league).then(setData).catch((e) => setErr(e.message));
   }, [meta.league]);
 

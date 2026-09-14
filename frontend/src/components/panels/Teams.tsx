@@ -4,20 +4,23 @@ import { Card, CardBody, CardHeader } from "@/components/ui/Card";
 import { Select } from "@/components/ui/Select";
 import { Plot } from "@/components/ui/Plot";
 import { formatSeason } from "@/lib/season";
+import { useQueryState } from "@/lib/url";
 
 export function Teams({ meta }: { meta: Meta }) {
-  const [team, setTeam] = useState("");
+  const [team, setTeam] = useQueryState("team");
   const [series, setSeries] = useState<any>(null);
-  const [season, setSeason] = useState<string>("");
+  const [season, setSeason] = useQueryState("season");
   const [factors, setFactors] = useState<any>(null);
 
   useEffect(() => {
     if (!team) return;
     api.teamSeries(team, meta.league).then((d) => {
       setSeries(d);
-      const last = d.rows.at(-1)?.season ?? "";
-      setSeason(last);
+      // A season already in the URL wins: the link asked for that one, and
+      // this fires whenever the team's history arrives.
+      if (!season) setSeason(d.rows.at(-1)?.season ?? "");
     });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [team]);
 
   useEffect(() => {

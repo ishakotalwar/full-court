@@ -5,6 +5,7 @@ import { Select } from "@/components/ui/Select";
 import { Plot } from "@/components/ui/Plot";
 import { cn } from "@/lib/cn";
 import { formatSeason } from "@/lib/season";
+import { useQueryState } from "@/lib/url";
 
 type Pick = { team: string; season: string };
 
@@ -22,9 +23,20 @@ const ROWS: { key: string; label: string; fmt: (v: number) => string; lowerBette
   { key: "FT rate", label: "FT rate", fmt: (v) => v.toFixed(3) },
 ];
 
+/** "Boston Celtics~2026" — a team and the season of it, in one param. */
+const readPick = (raw: string): Pick => {
+  const [team = "", season = ""] = raw.split("~");
+  return { team, season };
+};
+const writePick = (p: Pick) => (p.team ? `${p.team}~${p.season}` : "");
+
 export function TeamMatchup({ meta }: { meta: Meta }) {
-  const [a, setA] = useState<Pick>({ team: "", season: "" });
-  const [b, setB] = useState<Pick>({ team: "", season: "" });
+  const [aParam, setAParam] = useQueryState("a");
+  const [bParam, setBParam] = useQueryState("b");
+  const a = readPick(aParam);
+  const b = readPick(bParam);
+  const setA = (next: Pick) => setAParam(writePick(next));
+  const setB = (next: Pick) => setBParam(writePick(next));
   const [data, setData] = useState<any>(null);
   const [err, setErr] = useState<string | null>(null);
 

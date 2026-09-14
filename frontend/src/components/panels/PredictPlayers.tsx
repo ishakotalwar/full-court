@@ -4,6 +4,7 @@ import { Avatar, playerAvatar } from "@/components/ui/Avatar";
 import { Card, CardBody, CardHeader } from "@/components/ui/Card";
 import { PlayerCombobox } from "@/components/ui/PlayerCombobox";
 import { api, type Meta } from "@/lib/api";
+import { useQueryState } from "@/lib/url";
 import { formatValue, label as metricLabel } from "@/lib/metrics";
 import { formatSeason } from "@/lib/season";
 
@@ -12,32 +13,39 @@ import { formatSeason } from "@/lib/season";
  * season's projected line with the arithmetic that produced it.
  */
 export function PredictPlayers({ meta }: { meta: Meta }) {
-  const [search, setSearch] = useState("");
+  const [search, setSearch] = useQueryState("player");
   const [projection, setProjection] = useState<any>(null);
   const [err, setErr] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
   const avatar = playerAvatar(meta);
 
-  // A player picked in one league has no meaning in the other.
+  // Fetching follows the name rather than the click, so a link that arrives
+  // with a player already in it shows their projection without one.
   useEffect(() => {
-    setSearch("");
-    setProjection(null);
-    setErr(null);
-  }, [meta.league]);
-
-  const pick = (name: string) => {
-    setSearch(name);
+    const id = search ? meta.player_ids[search] : undefined;
+    if (!id) {
+      setProjection(null);
+      setErr(null);
+      return;
+    }
     setErr(null);
     setLoading(true);
+    let alive = true;
     api
-      .predictPlayer(meta.player_ids[name], meta.league)
-      .then(setProjection)
+      .predictPlayer(id, meta.league)
+      .then((d) => alive && setProjection(d))
       .catch((e) => {
+        if (!alive) return;
         setProjection(null);
         setErr(e.message);
       })
-      .finally(() => setLoading(false));
-  };
+      .finally(() => alive && setLoading(false));
+    return () => {
+      alive = false;
+    };
+  }, [search, meta.league, meta.player_ids]);
+
+  const pick = (name: string) => setSearch(name);
 
   const accuracy = projection?.accuracy;
 

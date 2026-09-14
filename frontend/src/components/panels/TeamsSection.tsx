@@ -1,4 +1,3 @@
-import { useEffect, useState } from "react";
 import type { Meta } from "@/lib/api";
 import { ViewTabs } from "@/components/ui/ViewTabs";
 import { TeamCompare } from "./TeamCompare";
@@ -25,26 +24,23 @@ const VIEWS = [
 export function TeamsSection({
   meta,
   view,
-  seedFor,
+  onView,
 }: {
   meta: Meta;
+  /** Which view is open — a segment of the URL, not state held here. */
   view?: string;
-  /** The structured query Ask Full Court last ran, for the page it points at. */
-  seedFor: (page: string) => any;
+  onView: (view: string) => void;
 }) {
-  const [active, setActive] = useState<string>(view ?? "league");
-  useEffect(() => {
-    if (view) setActive(view);
-  }, [view]);
+  const active = view ?? "league";
 
   return (
     <div className="space-y-4">
-      <ViewTabs views={VIEWS} value={active} onChange={setActive} />
+      <ViewTabs views={VIEWS} value={active} onChange={onView} />
       {active === "league" && <TeamCompare meta={meta} />}
       {active === "team" && <Teams meta={meta} />}
       {active === "compare" && <TeamMatchup meta={meta} />}
-      {active === "lineups" && <Lineups meta={meta} seed={seedFor("lineups")} />}
-      {active === "wowy" && <Wowy meta={meta} seed={seedFor("wowy")} />}
+      {active === "lineups" && <Lineups meta={meta} />}
+      {active === "wowy" && <Wowy meta={meta} />}
       {active === "leaders" && <TeamRankings meta={meta} />}
     </div>
   );

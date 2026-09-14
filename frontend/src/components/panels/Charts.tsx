@@ -10,6 +10,7 @@ import { cn } from "@/lib/cn";
 import { BLANK } from "@/lib/labels";
 import { themeAlpha, themeColor, useTheme } from "@/lib/theme";
 import { formatSeason } from "@/lib/season";
+import { useQueryState } from "@/lib/url";
 
 /** How many of the extremes get named. Every point is still hoverable. */
 const LABEL_CHOICES = ["0", "5", "10", "20"];
@@ -36,20 +37,21 @@ export function Charts({ meta }: { meta: Meta }) {
   }));
   const latest = seasons.at(-1) ?? "";
 
-  const [subject, setSubject] = useState<"players" | "teams">("players");
+  const [subjectParam, setSubject] = useQueryState("subject", "players");
+  const subject: "players" | "teams" = subjectParam === "teams" ? "teams" : "players";
   // One season by default. The whole archive on one scatter is a cloud with
   // no shape to it; widening the range is one click for someone who wants it.
-  const [from, setFrom] = useState(latest);
-  const [to, setTo] = useState(latest);
-  const [team, setTeam] = useState("");
-  const [minGp, setMinGp] = useState("20");
-  const [minMin, setMinMin] = useState("0");
-  const [per, setPer] = useState("game");
+  const [from, setFrom] = useQueryState("from", latest);
+  const [to, setTo] = useQueryState("to", latest);
+  const [team, setTeam] = useQueryState("team");
+  const [minGp, setMinGp] = useQueryState("minGp", "20");
+  const [minMin, setMinMin] = useQueryState("minMin", "0");
+  const [per, setPer] = useQueryState("per", "game");
 
-  const [x, setX] = useState("fg_pct");
-  const [y, setY] = useState("pts");
-  const [size, setSize] = useState(NONE);
-  const [labelCount, setLabelCount] = useState("10");
+  const [x, setX] = useQueryState("x", "fg_pct");
+  const [y, setY] = useQueryState("y", "pts");
+  const [size, setSize] = useQueryState("size", NONE);
+  const [labelCount, setLabelCount] = useQueryState("labels", "10");
 
   const [fields, setFields] = useState<{ metrics: string[]; teams: string[] } | null>(null);
   const [data, setData] = useState<any>(null);

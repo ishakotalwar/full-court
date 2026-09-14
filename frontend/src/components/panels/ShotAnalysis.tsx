@@ -2,7 +2,8 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { api, type Meta, type PlayerSeason } from "@/lib/api";
 import { Card, CardBody, CardHeader } from "@/components/ui/Card";
 import { Plot } from "@/components/ui/Plot";
-import { PlayerSeasonSelector, emptySelection } from "@/components/ui/PlayerSeasonSelector";
+import { PlayerSeasonSelector } from "@/components/ui/PlayerSeasonSelector";
+import { useQueryFlag, useQueryPlayer, useQueryState } from "@/lib/url";
 import { playerAvatar } from "@/components/ui/Avatar";
 import {
   buildCourtShapes, courtAxis, courtLines, zoneOf, zonePolygons,
@@ -567,14 +568,14 @@ function ZoneCard({
   );
 }
 
-/** `seed` is the player-season Ask Full Court just analyzed. */
-export function ShotAnalysis({ meta, seed }: { meta: Meta; seed?: any }) {
+export function ShotAnalysis({ meta }: { meta: Meta }) {
   const avatar = playerAvatar(meta);
-  const [a, setA] = useState<PlayerSeason>(emptySelection);
-  const [b, setB] = useState<PlayerSeason>(emptySelection);
-  const [comparing, setComparing] = useState(false);
-  const [mode, setMode] = useState<ChartMode>("hex");
-  const [seasonType, setSeasonType] = useState("regular");
+  const [a, setA] = useQueryPlayer(meta);
+  const [b, setB] = useQueryPlayer(meta, "vs", "vsSeason");
+  const [comparing, setComparing] = useQueryFlag("compare");
+  const [modeParam, setMode] = useQueryState("mode", "hex");
+  const mode = (["hex", "scatter", "3d"].includes(modeParam) ? modeParam : "hex") as ChartMode;
+  const [seasonType, setSeasonType] = useQueryState("type", "regular");
   const [shotsA, setShotsA] = useState<any>(null);
   const [shotsB, setShotsB] = useState<any>(null);
   const [zonesA, setZonesA] = useState<any>(null);
@@ -584,15 +585,6 @@ export function ShotAnalysis({ meta, seed }: { meta: Meta; seed?: any }) {
    *  stays like-for-like. Picking one opens its breakdown below. */
   const [picked, setPicked] = useState<Zone | null>(null);
   const toggleZone = (z: Zone) => setPicked((prev) => (prev === z ? null : z));
-
-  useEffect(() => {
-    if (!seed?.player_id || !seed?.season) return;
-    setA({
-      playerId: seed.player_id,
-      playerName: seed.player_name ?? "",
-      season: String(seed.season),
-    });
-  }, [seed]);
 
   // Requests come back out of order — scrubbing the season selector fires one
   // per stop, and a slow early one resolving last would overwrite the answer

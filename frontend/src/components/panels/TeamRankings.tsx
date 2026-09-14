@@ -3,6 +3,7 @@ import { api, type Meta } from "@/lib/api";
 import { Card, CardBody, CardHeader } from "@/components/ui/Card";
 import { Select } from "@/components/ui/Select";
 import { formatSeason } from "@/lib/season";
+import { useQueryState } from "@/lib/url";
 
 const METRICS = [
   { value: "net", label: "Net rating" },
@@ -26,7 +27,7 @@ const fmt = (metric: string, v: number | null) => {
 };
 
 export function TeamRankings({ meta }: { meta: Meta }) {
-  const [metric, setMetric] = useState("net");
+  const [metric, setMetric] = useQueryState("metric", "net");
   const [data, setData] = useState<any>(null);
 
   useEffect(() => {

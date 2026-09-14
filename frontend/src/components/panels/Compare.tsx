@@ -11,6 +11,7 @@ import { playerAvatar } from "@/components/ui/Avatar";
 import { formatDelta, formatValue, label, ordinal, shortLabel, sortMetrics } from "@/lib/metrics";
 import { cn } from "@/lib/cn";
 import { formatSeason } from "@/lib/season";
+import { useQueryPlayers, useQueryState } from "@/lib/url";
 
 const MODES = [
   { v: "season", label: "Single season" },
@@ -19,26 +20,17 @@ const MODES = [
 
 const MAX = 5;
 
-/** `seed` carries the player-seasons Ask Full Court just compared. */
-export function Compare({ meta, seed }: { meta: Meta; seed?: any }) {
+export function Compare({ meta }: { meta: Meta }) {
   const avatar = playerAvatar(meta);
-  const [mode, setMode] = useState<"season" | "career">("season");
-  const [picks, setPicks] = useState<PlayerSeason[]>([{ ...emptySelection }]);
-
-  useEffect(() => {
-    if (!Array.isArray(seed?.players) || seed.players.length === 0) return;
-    setPicks(
-      seed.players.map((p: any) => ({
-        playerId: p.player_id,
-        playerName: p.player_name ?? "",
-        season: String(p.season),
-      })),
-    );
-  }, [seed]);
+  const [modeParam, setMode] = useQueryState("mode", "season");
+  const mode: "season" | "career" = modeParam === "career" ? "career" : "season";
+  const [chosen, setPicks] = useQueryPlayers(meta);
+  // One empty row to fill in when nobody has been picked yet.
+  const picks: PlayerSeason[] = chosen.length ? chosen : [{ ...emptySelection }];
   const [metrics, setMetrics] = useState<string[]>([]);
   const [view, setView] = useState<"radar" | "bar">("radar");
-  const [careerMetric, setCareerMetric] = useState("pts");
-  const [per, setPer] = useState("game");
+  const [careerMetric, setCareerMetric] = useQueryState("metric", "pts");
+  const [per, setPer] = useQueryState("per", "game");
   const [data, setData] = useState<any>(null);
   const [sort, setSort] = useState<{ key: string; dir: 1 | -1 } | null>(null);
   const [err, setErr] = useState<string | null>(null);

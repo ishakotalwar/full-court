@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { api, type Meta } from "@/lib/api";
 import { Card, CardBody, CardHeader } from "@/components/ui/Card";
+import { useQueryNumber, useQueryState } from "@/lib/url";
 import { Select } from "@/components/ui/Select";
 import { Slider } from "@/components/ui/Slider";
 import { Plot, pickColor } from "@/components/ui/Plot";
@@ -54,33 +55,24 @@ const surname = (name: string) => name.trim().split(/\s+/).slice(1).join(" ") ||
  * rebuilt from substitutions in `etl/lineup_etl.py`; the ratings are on the
  * same per-100-possessions scale as team ORtg and DRtg elsewhere.
  */
-/** `seed` arrives from Ask Full Court: the season, team and group size behind
- *  the answer it just showed. */
-export function Lineups({ meta, seed }: { meta: Meta; seed?: any }) {
+export function Lineups({ meta }: { meta: Meta }) {
   const lineupSeasons = meta.lineup_seasons ?? [];
-  const [season, setSeason] = useState(lineupSeasons.at(-1) ?? "");
-  const [team, setTeam] = useState<string>(ALL_TEAMS);
-  const [minMinutes, setMinMinutes] = useState(100);
+  const [season, setSeason] = useQueryState("season", lineupSeasons.at(-1) ?? "");
+  const [team, setTeam] = useQueryState("team", ALL_TEAMS);
+  // A team's whole rotation is a few dozen lineups; the league's is thousands,
+  // so the league view needs a higher bar to stay a list a person can read.
+  // The floor follows the team as a default rather than as an effect, which
+  // keeps it out of the URL until someone actually moves the slider.
+  const [minMinutes, setMinMinutes] = useQueryNumber("min", team ? 50 : 100);
   // How many players make a group. A five rolls up into the pairs, trios and
   // quartets inside it.
-  const [size, setSize] = useState(5);
+  const [size, setSize] = useQueryNumber("size", 5);
   const [data, setData] = useState<any>(null);
   const [err, setErr] = useState<string | null>(null);
   const [sort, setSort] = useState<{ key: string; dir: 1 | -1 }>({ key: "min", dir: -1 });
   // Which fives are pinned onto the chart. Keyed by the five itself so the
   // selection survives re-sorting and re-fetching.
   const [picked, setPicked] = useState<string[]>([]);
-
-  useEffect(() => {
-    if (!seed) return;
-    if (seed.season) setSeason(String(seed.season));
-    setTeam(seed.team ? String(seed.team) : ALL_TEAMS);
-    if ([2, 3, 4, 5].includes(seed.size)) setSize(seed.size);
-  }, [seed]);
-
-  // A team's whole rotation is a few dozen lineups; the league's is thousands,
-  // so the league view needs a higher bar to stay a list a person can read.
-  useEffect(() => setMinMinutes(team ? 50 : 100), [team]);
 
   // A different season, team or floor is a different set of fives, so a
   // selection made against the old one would highlight nothing.

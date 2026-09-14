@@ -3,7 +3,8 @@ import { api, type Meta, type PlayerSeason } from "@/lib/api";
 import { Card, CardBody, CardHeader } from "@/components/ui/Card";
 import { Plot, traceColor } from "@/components/ui/Plot";
 import { Slider } from "@/components/ui/Slider";
-import { PlayerSeasonSelector, emptySelection } from "@/components/ui/PlayerSeasonSelector";
+import { PlayerSeasonSelector } from "@/components/ui/PlayerSeasonSelector";
+import { useQueryFlag, useQueryNumber, useQueryPlayer, useQueryState } from "@/lib/url";
 import { PlayerLegend } from "@/components/ui/PlayerLegend";
 import { playerAvatar } from "@/components/ui/Avatar";
 import { formatValue, shortLabel } from "@/lib/metrics";
@@ -23,34 +24,18 @@ type OverlayRow = {
   isAnchor: boolean;
 };
 
-/** `seed` arrives from Ask Full Court: the structured query it just ran, so
- *  "Open in Similarity" lands on the answer rather than an empty panel. */
-export function Similar({ meta, seed }: { meta: Meta; seed?: any }) {
+export function Similar({ meta }: { meta: Meta }) {
   const avatar = playerAvatar(meta);
-  const [sel, setSel] = useState<PlayerSeason>(emptySelection);
-  const [preset, setPreset] = useState("Overall");
+  const [sel, setSel] = useQueryPlayer(meta);
+  const [preset, setPreset] = useQueryState("preset", "Overall");
   const [weights, setWeights] = useState<Record<string, number>>({});
-  const [k, setK] = useState(8);
-  const [minGp, setMinGp] = useState(20);
-  const [sameSeason, setSameSeason] = useState(false);
+  const [k, setK] = useQueryNumber("k", 8);
+  const [minGp, setMinGp] = useQueryNumber("minGp", 20);
+  const [sameSeason, setSameSeason] = useQueryFlag("sameSeason");
   const [data, setData] = useState<any>(null);
   const [err, setErr] = useState<string | null>(null);
   /** Keys of the seasons drawn on the radar, chosen from the result set. */
   const [shown, setShown] = useState<string[]>([]);
-
-  useEffect(() => {
-    if (!seed) return;
-    if (seed.player_id && seed.season) {
-      setSel({
-        playerId: seed.player_id,
-        playerName: seed.player_name ?? "",
-        season: String(seed.season),
-      });
-    }
-    if (seed.preset) setPreset(seed.preset);
-    if (typeof seed.k === "number") setK(seed.k);
-    if (typeof seed.min_gp === "number") setMinGp(seed.min_gp);
-  }, [seed]);
 
   const features: string[] = data?.features ?? [];
 

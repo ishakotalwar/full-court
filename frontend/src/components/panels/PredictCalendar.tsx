@@ -3,6 +3,7 @@ import { useEffect, useMemo, useState } from "react";
 import { Card, CardBody, CardHeader } from "@/components/ui/Card";
 import { ErrorNotice } from "@/components/ui/ErrorNotice";
 import { api, type Meta } from "@/lib/api";
+import { useQueryState } from "@/lib/url";
 import { cn } from "@/lib/cn";
 
 const WEEKDAYS = ["Su", "Mo", "Tu", "We", "Th", "Fr", "Sa"];
@@ -31,7 +32,9 @@ type DayInfo = { date: string; games: number; upcoming: number };
  */
 export function PredictCalendar({ meta }: { meta: Meta }) {
   const [index, setIndex] = useState<{ dates: DayInfo[]; default_date: string; today: string } | null>(null);
-  const [selected, setSelected] = useState<string | null>(null);
+  // The day in the URL, or the one the calendar opens on. Derived rather than
+  // stored, so arriving with no date doesn't write today's into the address.
+  const [dateParam, setSelected] = useQueryState("date");
   const [month, setMonth] = useState<{ y: number; m: number } | null>(null);
   const [day, setDay] = useState<any>(null);
   const [err, setErr] = useState<string | null>(null);
@@ -39,7 +42,6 @@ export function PredictCalendar({ meta }: { meta: Meta }) {
 
   useEffect(() => {
     setIndex(null);
-    setSelected(null);
     setMonth(null);
     setDay(null);
     setErr(null);
@@ -47,14 +49,14 @@ export function PredictCalendar({ meta }: { meta: Meta }) {
       .predictCalendar(meta.league)
       .then((d) => {
         setIndex(d);
-        if (d.default_date) {
-          const { y, m } = parseDay(d.default_date);
-          setSelected(d.default_date);
-          setMonth({ y, m });
-        }
+        const start = dateParam || d.default_date;
+        if (start) setMonth(parseDay(start));
       })
       .catch((e) => setErr(e.message));
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [meta.league]);
+
+  const selected = dateParam || index?.default_date || null;
 
   useEffect(() => {
     if (!selected) return;

@@ -10,6 +10,7 @@ import { BLANK } from "@/lib/labels";
 import { useRowIndex } from "@/lib/rows";
 import { useTheme } from "@/lib/theme";
 import { formatSeason } from "@/lib/season";
+import { useQueryNumber, useQueryState } from "@/lib/url";
 
 const DIVERGING: [number, string][] = [
   [0, "#d73027"],
@@ -160,21 +161,20 @@ function Pct({ value }: { value: number | null | undefined }) {
  * plus-minus describes a player's teammates as much as the player, and the
  * regression is what pulls the two apart.
  */
-/** `seed` arrives from Ask Full Court: the metric and season the answer it
- *  just showed was ranked on, so the page opens on that leaderboard. */
-export function Ratings({ meta, seed }: { meta: Meta; seed?: any }) {
+export function Ratings({ meta }: { meta: Meta }) {
   const regularSeasons = meta.rating_seasons ?? [];
   const playoffSeasons = meta.rating_playoff_seasons ?? [];
-  const [seasonType, setSeasonType] = useState("regular");
+  const [seasonType, setSeasonType] = useQueryState("type", "regular");
   const seasons = seasonType === "playoffs" ? playoffSeasons : regularSeasons;
 
-  const [season, setSeason] = useState(regularSeasons.at(-1) ?? "");
-  const [team, setTeam] = useState("");
+  const [season, setSeason] = useQueryState("season", regularSeasons.at(-1) ?? "");
+  const [team, setTeam] = useQueryState("team");
   // Share of the team's possessions, so the bar means the same thing in either
   // league and in a postseason a fifth the length of a season.
-  const [minShare, setMinShare] = useState(55);
-  const [scale, setScale] = useState<"per100" | "total">("per100");
-  const [metric, setMetric] = useState("rapm");
+  const [minShare, setMinShare] = useQueryNumber("load", 55);
+  const [scaleParam, setScale] = useQueryState("scale", "per100");
+  const scale: "per100" | "total" = scaleParam === "total" ? "total" : "per100";
+  const [metric, setMetric] = useQueryState("metric", "rapm");
   const [data, setData] = useState<any>(null);
   const [err, setErr] = useState<string | null>(null);
   const [sort, setSort] = useState<{ key: string; dir: 1 | -1 }>({ key: "rapm", dir: -1 });
@@ -182,12 +182,6 @@ export function Ratings({ meta, seed }: { meta: Meta; seed?: any }) {
   const { register, reveal } = useRowIndex<number>();
   // Only to re-run the trace memo when the palette changes.
   const theme = useTheme();
-
-  useEffect(() => {
-    if (!seed) return;
-    if (seed.metric) setMetric(String(seed.metric));
-    if (seed.season) setSeason(String(seed.season));
-  }, [seed]);
 
   // A postseason too small for the ETL to fit has no season to offer, so the
   // selection follows whichever list is live.
