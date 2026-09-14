@@ -137,20 +137,35 @@ def _candidates(stem: str, league: League) -> list[Path]:
 
 @lru_cache(maxsize=64)
 def row_count(stem: str, league: League = DEFAULT) -> int | None:
-    """How many rows a dataset has, or None if it isn't on disk.
+    """How many rows a dataset has, or None if it can't be told cheaply.
 
     Read from the Parquet footer, so counting a file costs nothing close to
-    loading it — this is how the landing page can state the size of the shot
-    table without ever pulling twenty megabytes of coordinates into memory.
-    """
-    import pyarrow.parquet as pq
+    loading it — this is how the landing page states the size of the shot
+    table without pulling twenty megabytes of coordinates into memory.
 
+    Whichever engine is present answers: the deployment installs fastparquet
+    and not pyarrow (see requirements.txt — pyarrow is 112 MB against a 250 MB
+    function bundle), while a local checkout usually has both. Neither one
+    being importable is not an error; the count is simply unavailable, and
+    every caller treats None as "don't show the number".
+    """
     for path in _candidates(stem, league):
-        if path.exists():
-            try:
-                return pq.ParquetFile(path).metadata.num_rows
-            except Exception:
-                return None
+        if not path.exists():
+            continue
+        try:
+            import pyarrow.parquet as pq
+
+            return int(pq.ParquetFile(path).metadata.num_rows)
+        except Exception:
+            pass
+        try:
+            from fastparquet import ParquetFile
+
+            count = ParquetFile(str(path)).count
+            # A property in fastparquet < 0.7, a method after it.
+            return int(count() if callable(count) else count)
+        except Exception:
+            return None
     return None
 
 

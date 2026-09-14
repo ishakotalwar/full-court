@@ -21,24 +21,26 @@ def _coverage(lg: leagues.League) -> dict | None:
     read from a Parquet footer, so describing both leagues costs no more than
     discovering them.
     """
+    # Everything, inside the try: this endpoint is how the app discovers that
+    # it can run at all, so a number it cannot work out has to cost that
+    # number and not the page. The landing page drops any tile it is not given.
     try:
         seasons = data.seasons(lg)
-        players = data.player_names(lg)
+        return {
+            "seasons": len(seasons),
+            "first_season": seasons[0] if seasons else None,
+            "last_season": seasons[-1] if seasons else None,
+            "season_format": lg.season_format,
+            "players": len(data.player_names(lg)),
+            # A row of the players table is one player-season, which is also
+            # one row of the Explorer — the number the visitor pages through.
+            "player_seasons": len(data.players(lg)),
+            # None for a league with no shot file, or no engine able to read
+            # the footer; the tile drops out rather than reading zero.
+            "shots": data.row_count("shots", lg),
+        }
     except Exception:
         return None
-    return {
-        "seasons": len(seasons),
-        "first_season": seasons[0] if seasons else None,
-        "last_season": seasons[-1] if seasons else None,
-        "season_format": lg.season_format,
-        "players": len(players),
-        # A row of the players table is one player-season, which is also one
-        # row of the Explorer — the same number the visitor will page through.
-        "player_seasons": len(data.players(lg)),
-        # None for a league with no shot file; the tile drops out rather than
-        # reading zero.
-        "shots": data.row_count("shots", lg),
-    }
 
 
 @router.get("/leagues")

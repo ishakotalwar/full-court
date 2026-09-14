@@ -273,10 +273,13 @@ const IconShots = (
         and a rim drawn small enough to share the box merge into an arrowhead. */}
     {/* A ball above a rim, and a net that stays a trapezoid — taper it to a
         point and the whole glyph turns into a map pin. */}
-    <circle cx="12" cy="5" r="2.9" />
-    <path d="M4.5 12h15" />
-    <path d="M7.6 12 9.8 20.6M16.4 12 14.2 20.6" />
-    <path d="M9.8 20.6h4.4" />
+    <circle cx="12" cy="4.2" r="2.6" />
+    <path d="M3 10.5h18" />
+    <path d="M6 10.5 8 18.6M18 10.5 16 18.6" />
+    {/* A net hangs in scallops, so its bottom edge is a W and not a hem. The
+        rim is wider and the taper gentler than they want to be, because the
+        zigzag needs room to still be a zigzag at 22 pixels. */}
+    <path d="M8 18.6 10 21 12 18.9 14 21 16 18.6" />
   </svg>
 );
 const IconTeams = (
