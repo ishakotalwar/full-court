@@ -17,24 +17,29 @@ export type Destination = { mode: Mode; tab: string; view?: string };
 const TONES = {
   accent: {
     text: "text-accent",
-    chip: "bg-accent/10 text-accent ring-accent/25",
+    chip: "bg-accent text-onAccent",
     bar: "bg-accent",
     edge: "hover:border-accent focus-visible:border-accent",
     glow: "hover:shadow-accent/25 focus-visible:shadow-accent/25",
+    cta: "rounded-full border-black/10 bg-white text-neutral-900 shadow-sm group-hover:border-accent group-hover:bg-accent group-hover:text-onAccent group-active:border-accent group-active:bg-accent group-active:text-onAccent group-focus-visible:border-accent group-focus-visible:bg-accent group-focus-visible:text-onAccent",
   },
   accent2: {
     text: "text-accent2",
-    chip: "bg-accent2/10 text-accent2 ring-accent2/25",
+    chip: "bg-accent2 text-onAccent2",
     bar: "bg-accent2",
     edge: "hover:border-accent2 focus-visible:border-accent2",
     glow: "hover:shadow-accent2/25 focus-visible:shadow-accent2/25",
+    cta: "rounded-full border-black/10 bg-white text-neutral-900 shadow-sm group-hover:border-accent2 group-hover:bg-accent2 group-hover:text-onAccent2 group-active:border-accent2 group-active:bg-accent2 group-active:text-onAccent2 group-focus-visible:border-accent2 group-focus-visible:bg-accent2 group-focus-visible:text-onAccent2",
   },
   good: {
     text: "text-good",
-    chip: "bg-good/10 text-good ring-good/25",
+    chip: "bg-good text-bg",
     bar: "bg-good",
     edge: "hover:border-good focus-visible:border-good",
     glow: "hover:shadow-good/25 focus-visible:shadow-good/25",
+    // No `onGood` token exists, and none is needed: every palette's good is
+    // far enough from its background for the page ground to read on it.
+    cta: "rounded-full border-black/10 bg-white text-neutral-900 shadow-sm group-hover:border-good group-hover:bg-good group-hover:text-bg group-active:border-good group-active:bg-good group-active:text-bg group-focus-visible:border-good group-focus-visible:bg-good group-focus-visible:text-bg",
   },
 } as const;
 
@@ -108,14 +113,20 @@ export function Landing({
     : [];
 
   return (
-    <div className="mx-auto min-h-screen max-w-6xl px-6 pb-16 pt-[6vh]">
-      <section className="card relative overflow-hidden shadow-2xl shadow-black/20">
+    <div className="mx-auto flex max-w-6xl flex-col px-6 pb-5 pt-5 lg:h-screen">
+      <section className="card relative shrink-0 overflow-hidden shadow-2xl shadow-black/20">
         {/* The half court the app is named for, drawn to scale and sunk almost
             into the panel: at this opacity it reads as texture until you look
             for it, which is the most a background should ask. */}
         <HalfCourt
           aria-hidden
-          className="pointer-events-none absolute left-1/2 top-0 h-[340px] w-[567px] -translate-x-1/2 text-accent opacity-[0.12]"
+          className={cn(
+            "pointer-events-none absolute left-1/2 top-0 h-[340px] w-[567px]",
+            "-translate-x-1/2 text-accent opacity-[0.12]",
+            // The panel is shorter than the court is deep, so the lines are
+            // faded out rather than sliced off at the edge of the card.
+            "[mask-image:linear-gradient(to_bottom,black_45%,transparent_92%)]"
+          )}
         />
         {/* Two washes of accent light, which is what keeps a flat panel from
             reading as a spreadsheet. Both sit under the content. */}
@@ -128,21 +139,24 @@ export function Landing({
           className="pointer-events-none absolute -bottom-28 -left-24 h-80 w-80 rounded-full bg-accent/20 blur-3xl"
         />
 
-        <div className="relative flex flex-wrap items-start justify-between gap-8 px-8 pb-9 pt-10">
-          <div className="min-w-0">
-            <h1 className="text-6xl font-extrabold leading-none tracking-tighter">
+        {/* One row: what this is, and how much of it there is. Stacked, the
+            numbers pushed the tiles below the fold — and the page is meant to
+            be taken in without scrolling. */}
+        <div className="relative flex flex-wrap items-center gap-x-8 gap-y-6 px-7 py-7">
+          <div className="min-w-0 flex-1">
+            <h1 className="text-5xl font-extrabold leading-none tracking-tighter">
               <span className="text-ink">Full</span>
               <span className="bg-gradient-to-r from-accent to-accent2 bg-clip-text text-transparent">
                 Court
               </span>
             </h1>
-            <p className="mt-4 max-w-lg text-[15px] leading-relaxed text-ink">
-              Historical <Hi>NBA</Hi> and <Hi tone="accent2">WNBA</Hi> analytics
-              — player and team stats, shot locations, lineups and impact
-              ratings, and forecasts for games that have not been played yet.
+            <p className="mt-3 max-w-md text-[15px] leading-relaxed text-ink">
+              Historical <Hi>NBA</Hi> and <Hi tone="accent2">WNBA</Hi> analytics:
+              player and team stats, shot locations, lineups and impact ratings,
+              and forecasts for games not yet played.
             </p>
 
-            <div className="mt-6 inline-flex items-center gap-1 border border-border bg-bg p-1">
+            <div className="mt-4 inline-flex items-center gap-1 border border-border bg-bg p-1">
               {leagues.map((l) => (
                 <button
                   key={l.key}
@@ -168,61 +182,51 @@ export function Landing({
             </div>
           </div>
 
-          {/* A mark, not a hero — but in accent it carries colour rather than
-              just outline, which is most of what it is here to do. */}
-          <LinePlayer className="hidden h-40 w-auto shrink-0 text-accent sm:block" />
-        </div>
+          {/* A mark, not a hero — and the first thing to go when the row runs
+              out of width, since the numbers beside it say more. */}
+          <LinePlayer className="hidden h-28 w-auto shrink-0 text-accent xl:block" />
 
-        <dl className="relative grid grid-cols-2 border-t border-border bg-bg/50 backdrop-blur sm:grid-cols-4">
-          {stats.map((s, i) => (
-            <div
-              key={s.label}
-              className={cn(
-                "px-6 py-5",
-                // Hairlines only where the row actually is a row: at two
-                // columns a rule on the third cell would fall down the middle
-                // of the block instead of between two numbers.
-                i > 0 && "sm:border-l sm:border-border"
-              )}
-            >
-              <dt className="label">{s.label}</dt>
-              <dd
-                className={cn(
-                  "mt-1.5 text-[2.6rem] font-extrabold leading-none tracking-tighter tabular-nums",
-                  TONES[s.tone].text
-                )}
-              >
-                {s.value}
-              </dd>
-              <dd className="mt-2 text-xs text-mute">{s.note}</dd>
-            </div>
-          ))}
-          {!stats.length && (
-            <div className="px-6 py-5 text-sm text-mute">
-              No data on disk for this league yet.
-            </div>
-          )}
-        </dl>
+          <dl className="grid w-full shrink-0 grid-cols-2 gap-x-10 gap-y-5 sm:w-auto">
+            {stats.map((s) => (
+              <div key={s.label}>
+                <dt className="label">{s.label}</dt>
+                <dd
+                  className={cn(
+                    "mt-1 text-[1.9rem] font-extrabold leading-none tracking-tighter tabular-nums",
+                    TONES[s.tone].text
+                  )}
+                >
+                  {s.value}
+                </dd>
+                <dd className="mt-1 text-xs text-mute">{s.note}</dd>
+              </div>
+            ))}
+            {!stats.length && (
+              <div className="text-sm text-mute">No data on disk for this league yet.</div>
+            )}
+          </dl>
+        </div>
       </section>
 
-      <div className="mt-12 flex items-center gap-3">
-        <span aria-hidden className="h-4 w-1 bg-accent" />
-        <h2 className="text-sm font-semibold uppercase tracking-widest text-ink">
-          Pages
-        </h2>
-        <span aria-hidden className="h-px flex-1 bg-border" />
-      </div>
-
-      <div className="mt-5 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+      <div
+        className={cn(
+          "mt-5 grid gap-3 sm:grid-cols-2 lg:min-h-0 lg:flex-1 lg:grid-cols-3",
+          // Two rows that share whatever the hero leaves — but never shrink
+          // below what a card holds. Plain `grid-rows-2` divides the space
+          // evenly whether or not the text fits, and the card, which clips to
+          // draw its hover bar, would quietly cut its own button off.
+          "lg:grid-rows-[repeat(2,minmax(min-content,1fr))]"
+        )}
+      >
         {ENTRIES.map((e) => (
           <Entry key={e.title} entry={e} onPick={onPick} />
         ))}
       </div>
 
-      <footer className="mt-10 text-xs leading-relaxed text-mute">
+      <footer className="mt-4 shrink-0 text-xs leading-relaxed text-mute">
         Data from ESPN, via hoopR and wehoop; per-possession defensive detail
-        from pbpstats. Ratings, lineups and projections are computed here, and
-        every model is shown against its own backtest.
+        from pbpstats. Ratings, lineups and projections are computed here, each
+        shown against its own backtest.
       </footer>
     </div>
   );
@@ -249,36 +253,44 @@ type EntrySpec = Destination & {
 
 /* Glyphs. Each is one idea in six strokes or fewer — a figure, two bars, a
    shot arc — drawn in the tile's own colour. */
-const g = { fill: "none", stroke: "currentColor", strokeWidth: 1.75, strokeLinecap: "round", strokeLinejoin: "round" } as const;
+const g = { fill: "none", stroke: "currentColor", strokeWidth: 2, strokeLinecap: "round", strokeLinejoin: "round" } as const;
 
 const IconPlayer = (
-  <svg viewBox="0 0 24 24" className="h-5 w-5" {...g}>
+  <svg viewBox="0 0 24 24" className="h-[22px] w-[22px]" {...g}>
     <circle cx="12" cy="7" r="3" />
     <path d="M5.5 20v-1.5A6.5 6.5 0 0 1 12 12a6.5 6.5 0 0 1 6.5 6.5V20" />
   </svg>
 );
 const IconCompare = (
-  <svg viewBox="0 0 24 24" className="h-5 w-5" {...g}>
+  <svg viewBox="0 0 24 24" className="h-[22px] w-[22px]" {...g}>
     <path d="M6 20V9M12 20V4M18 20v-7" />
     <path d="M3 20h18" />
   </svg>
 );
 const IconShots = (
-  <svg viewBox="0 0 24 24" className="h-5 w-5" {...g}>
-    <path d="M3 20c0-8 5.5-13 10-13" />
-    <circle cx="18" cy="8" r="3" />
-    <path d="M15.5 11.5 18 20" />
+  <svg viewBox="0 0 24 24" className="h-[22px] w-[22px]" {...g}>
+    {/* A ball over a rim and net. Three big shapes, because a trajectory arc
+        and a rim drawn small enough to share the box merge into an arrowhead. */}
+    {/* A ball above a rim, and a net that stays a trapezoid — taper it to a
+        point and the whole glyph turns into a map pin. */}
+    <circle cx="12" cy="5" r="2.9" />
+    <path d="M4.5 12h15" />
+    <path d="M7.6 12 9.8 20.6M16.4 12 14.2 20.6" />
+    <path d="M9.8 20.6h4.4" />
   </svg>
 );
 const IconTeams = (
-  <svg viewBox="0 0 24 24" className="h-5 w-5" {...g}>
-    <circle cx="8" cy="8" r="2.5" />
-    <circle cx="16.5" cy="9.5" r="2" />
-    <path d="M3 18.5v-1a5 5 0 0 1 10 0v1M14 18.5v-.8a4 4 0 0 1 7-2.6" />
+  <svg viewBox="0 0 24 24" className="h-[22px] w-[22px]" {...g}>
+    {/* Three: one in front and two behind it. A team is not a pair. */}
+    <circle cx="12" cy="6.6" r="2.7" />
+    <circle cx="5" cy="9" r="2" />
+    <circle cx="19" cy="9" r="2" />
+    <path d="M6.6 19.4a5.4 5.4 0 0 1 10.8 0" />
+    <path d="M1.8 17.6a3.6 3.6 0 0 1 4.5-3.4M22.2 17.6a3.6 3.6 0 0 0-4.5-3.4" />
   </svg>
 );
 const IconExplorer = (
-  <svg viewBox="0 0 24 24" className="h-5 w-5" {...g}>
+  <svg viewBox="0 0 24 24" className="h-[22px] w-[22px]" {...g}>
     <circle cx="6" cy="17" r="1.5" />
     <circle cx="11" cy="11" r="1.5" />
     <circle cx="17" cy="13" r="1.5" />
@@ -287,7 +299,7 @@ const IconExplorer = (
   </svg>
 );
 const IconPredict = (
-  <svg viewBox="0 0 24 24" className="h-5 w-5" {...g}>
+  <svg viewBox="0 0 24 24" className="h-[22px] w-[22px]" {...g}>
     <path d="M3 16.5 8.5 11l3.5 3.5L21 6" />
     <path d="M15 6h6v6" />
   </svg>
@@ -303,7 +315,7 @@ const ENTRIES: EntrySpec[] = [
   {
     title: "Players",
     blurb:
-      "One player's season: percentiles against the league, career trend, recent games, and five ways of rating impact.",
+      "Percentiles against the league, career trend, recent games, and five impact ratings.",
     tone: "accent",
     icon: IconPlayer,
     mode: "stats",
@@ -313,7 +325,7 @@ const ENTRIES: EntrySpec[] = [
   {
     title: "Comparisons",
     blurb:
-      "Two players or two teams side by side, on any basis — per game, per 36, or per 100 possessions.",
+      "Two players or two teams side by side: per game, per 36, or per 100 possessions.",
     tone: "accent2",
     icon: IconCompare,
     mode: "stats",
@@ -323,7 +335,7 @@ const ENTRIES: EntrySpec[] = [
   {
     title: "Shot analysis",
     blurb:
-      "Where the shots came from and what they returned, by zone, regular season or playoffs.",
+      "Where the shots came from and what they returned, by zone, season or playoffs.",
     tone: "good",
     icon: IconShots,
     mode: "stats",
@@ -333,7 +345,7 @@ const ENTRIES: EntrySpec[] = [
   {
     title: "Teams",
     blurb:
-      "League table and team profiles, the best lineups from two players to five, and what a team did with and without any group.",
+      "League table, team profiles, the best groups of two through five, and WOWY splits.",
     tone: "accent2",
     icon: IconTeams,
     mode: "stats",
@@ -343,7 +355,7 @@ const ENTRIES: EntrySpec[] = [
   {
     title: "Explorer",
     blurb:
-      "Filter and sort every player-season in the database, or plot any metric against any other.",
+      "Filter and sort every player-season, or plot any metric against any other.",
     tone: "good",
     icon: IconExplorer,
     mode: "stats",
@@ -352,7 +364,7 @@ const ENTRIES: EntrySpec[] = [
   {
     title: "Predictions",
     blurb:
-      "Win probabilities for scheduled games, projected player lines, Elo team ratings, and next-season projections.",
+      "Win probabilities, projected player lines, Elo team ratings and next-season projections.",
     tone: "accent",
     icon: IconPredict,
     mode: "predictions",
@@ -376,7 +388,7 @@ function Entry({
       type="button"
       onClick={() => onPick(dest)}
       className={cn(
-        "card group relative flex flex-col items-start overflow-hidden p-5 text-left",
+        "card group relative flex h-full flex-col items-start justify-center overflow-hidden p-5 text-left",
         "transition duration-200 ease-out focus-visible:outline-none",
         "hover:-translate-y-1 hover:shadow-xl focus-visible:-translate-y-1 focus-visible:shadow-xl",
         t.edge,
@@ -392,27 +404,30 @@ function Entry({
           t.bar
         )}
       />
+      <div className="flex items-center gap-2.5">
+        <span
+          aria-hidden
+          className={cn(
+            "flex h-11 w-11 shrink-0 items-center justify-center transition group-hover:scale-105",
+            t.chip
+          )}
+        >
+          {icon}
+        </span>
+        <h3 className="text-xl font-semibold tracking-tight text-ink">{title}</h3>
+      </div>
+      <p className="mb-4 mt-3 max-w-[34ch] text-[15px] leading-relaxed text-mute">{blurb}</p>
+      {/* A span, because the whole card is already the button — but it has to
+          look like the thing you press, which is what it is under the cursor. */}
       <span
-        aria-hidden
         className={cn(
-          "flex h-10 w-10 items-center justify-center ring-1 transition group-hover:scale-105",
-          t.chip
-        )}
-      >
-        {icon}
-      </span>
-      <h3 className="mt-4 text-base font-semibold tracking-tight text-ink">
-        {title}
-      </h3>
-      <p className="mt-1.5 text-sm leading-snug text-mute">{blurb}</p>
-      <span
-        className={cn(
-          "mt-4 inline-flex items-center gap-1.5 text-xs font-semibold uppercase tracking-wider",
-          t.text
+          "inline-flex items-center gap-1.5 border px-4 py-2 text-[13px] font-semibold",
+          "tracking-wide transition",
+          t.cta
         )}
       >
         Open
-        <span aria-hidden className="transition-transform group-hover:translate-x-1">
+        <span aria-hidden className="transition-transform group-hover:translate-x-0.5">
           →
         </span>
       </span>
