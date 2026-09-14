@@ -177,7 +177,6 @@ function Shell({ leagues }: { leagues: LeagueInfo[] }) {
               type="button"
               onClick={() => navigate("/")}
               className="text-left"
-              title="Back to the start"
             >
               <div className="text-2xl font-bold leading-none tracking-tight">
                 Full<span className="text-accent">Court</span>
@@ -332,7 +331,6 @@ function ModeSwitch({ mode, onSwitch }: { mode: Mode; onSwitch: (m: Mode) => voi
       type="button"
       onClick={() => onSwitch(goingTo)}
       className="btn btn-ghost whitespace-nowrap px-3 py-1.5 text-sm"
-      title={`Switch to ${goingTo}`}
     >
       {mode === "stats" ? "Predictions →" : "← Stats"}
     </button>
@@ -383,7 +381,6 @@ function ThemeToggle() {
           type="button"
           onClick={() => setOpen((o) => !o)}
           className="btn btn-ghost flex items-center gap-1.5 px-2.5 py-1.5 text-sm"
-          title="Color theme"
           aria-label="Color theme"
           aria-expanded={open}
         >
@@ -419,7 +416,6 @@ function ThemeToggle() {
         type="button"
         onClick={toggleMode}
         className="btn btn-ghost px-2.5 py-1.5 text-sm"
-        title={`Switch to ${mode === "dark" ? "light" : "dark"} mode`}
         aria-label={`Switch to ${mode === "dark" ? "light" : "dark"} mode`}
       >
         {mode === "dark" ? "☀" : "☾"}
@@ -445,7 +441,6 @@ function LeagueToggle({
           key={l.key}
           onClick={() => onChange(l.key)}
           disabled={!l.available && l.key !== active}
-          title={l.available ? `Show ${l.label} data` : `No ${l.label} data yet — run the ETL for this league`}
           className={cn(
            "border-b-2 pb-0.5 text-sm font-medium transition",
             l.key === active

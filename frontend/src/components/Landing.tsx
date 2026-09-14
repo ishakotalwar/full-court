@@ -169,11 +169,6 @@ export function Landing({
                   type="button"
                   onClick={() => onLeague(l.key)}
                   disabled={!l.available && l.key !== league}
-                  title={
-                    l.available
-                      ? `Show ${l.label} numbers and pages`
-                      : `No ${l.label} data yet — run the ETL for this league`
-                  }
                   className={cn(
                     "rounded-full px-5 py-1.5 text-sm font-semibold tracking-tight transition",
                     l.key === league
@@ -194,7 +189,6 @@ export function Landing({
               type="button"
               onClick={() => onEnter(league)}
               disabled={!active?.available}
-              title={`Go to ${active?.label ?? league.toUpperCase()}`}
               className={cn(
                 "group/go mt-5 flex items-center gap-3.5 text-left",
                 "focus-visible:outline-none",

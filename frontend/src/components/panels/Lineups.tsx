@@ -333,7 +333,6 @@ export function Lineups({ meta }: { meta: Meta }) {
                 {COLS.map((c) => (
                   <button
                     key={c.key}
-                    title={c.title}
                     onClick={() =>
                       setSort((s) =>
                         s.key === c.key
@@ -368,7 +367,6 @@ export function Lineups({ meta }: { meta: Meta }) {
                     key={keyOf(r)}
                     ref={register(keyOf(r))}
                     onClick={() => togglePick(r)}
-                    title="Show this group on the chart"
                     className={cn(
                       "cursor-pointer border-t border-border/60 px-4 py-2.5 transition hover:bg-border/30",
                       picked.includes(keyOf(r)) && "bg-accent/10"

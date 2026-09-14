@@ -235,7 +235,6 @@ export function Similar({ meta }: { meta: Meta }) {
                         type="button"
                         onClick={() => toggleShown(key)}
                         aria-pressed={on}
-                        title={on ? "Remove from the overlay" : "Add to the overlay"}
                         className={cn(
                           "flex w-full items-start gap-3 px-5 py-3 text-left transition hover:bg-border/25",
                           on && "bg-border/15"
@@ -322,7 +321,6 @@ export function Similar({ meta }: { meta: Meta }) {
                       {!r.isAnchor && (
                         <button
                           onClick={() => toggleShown(r.key)}
-                          title="Remove from the overlay"
                           aria-label={`Remove ${r.playerName} from the overlay`}
                           className="text-mute transition hover:text-ink"
                         >

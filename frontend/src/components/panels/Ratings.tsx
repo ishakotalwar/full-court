@@ -411,7 +411,6 @@ export function Ratings({ meta }: { meta: Meta }) {
                   key={key}
                   type="button"
                   onClick={() => setMetric(key)}
-                  title={m.blurb}
                   className={cn(
                     "rounded-full border px-3.5 py-1.5 text-sm transition",
                     key === metric
@@ -472,7 +471,6 @@ export function Ratings({ meta }: { meta: Meta }) {
                       {columns.map((c) => (
                         <th key={c.key} className="px-2 py-2 text-right font-medium">
                           <button
-                            title={c.title}
                             onClick={() =>
                               setSort((s) =>
                                 s.key === c.key
@@ -836,12 +834,6 @@ function Toggle({
           key={o.v}
           type="button"
           disabled={o.disabled}
-          title={
-            o.disabled
-              ? "A postseason this short can't hold a rating of its own — every " +
-                "number would be pulled to nearly zero"
-              : undefined
-          }
           onClick={() => onChange(o.v)}
           className={cn(
             "border-b-2 pb-0.5 transition",

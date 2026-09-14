@@ -149,7 +149,6 @@ export function PredictCalendar({ meta }: { meta: Meta }) {
                     isSelected && "bg-accent text-onAccent hover:bg-accent",
                     !isSelected && isToday && "ring-1 ring-inset ring-accent2",
                   )}
-                  title={info ? `${info.games} game${info.games === 1 ? "" : "s"}` : undefined}
                 >
                   {d}
                   {info && (
@@ -407,7 +406,6 @@ function InjuryFlag({ injury }: { injury?: { status: string; type?: string } | n
   const out = /out|suspend/i.test(injury.status);
   return (
     <span
-      title={[injury.status, injury.type].filter(Boolean).join(" · ")}
       className={cn(
         "ml-1.5 rounded px-1 py-px text-[10px] font-medium uppercase tracking-wide",
         out ? "bg-bad/15 text-bad" : "bg-accent/15 text-accent",

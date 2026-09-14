@@ -193,7 +193,6 @@ export function Wowy({ meta }: { meta: Meta }) {
                     type="button"
                     onClick={() => toggle(p.player_id)}
                     disabled={blocked}
-                    title={blocked ? `Deselect someone to pick more than ${max}` : p.name}
                     className={cn(
                       "group flex flex-col items-center gap-1.5 text-center transition",
                       blocked && "cursor-not-allowed opacity-40"
@@ -253,7 +252,6 @@ export function Wowy({ meta }: { meta: Meta }) {
                         chosen.map((p: any) => (
                           <th
                             key={p.player_id}
-                            title={p.name}
                             className="px-1 py-2 text-center font-medium"
                           >
                             <span className="inline-flex">
@@ -286,7 +284,6 @@ export function Wowy({ meta }: { meta: Meta }) {
                             return (
                               <td
                                 key={p.player_id}
-                                title={`${p.name} ${on ? "on" : "off"} the floor`}
                                 className={cn(
                                   "px-1 py-2 text-center",
                                   on ? "text-accent" : "text-mute/40"

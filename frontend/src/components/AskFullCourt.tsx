@@ -118,7 +118,6 @@ export function AskFullCourt({
       <button
         type="button"
         onClick={() => setOpen(true)}
-        title="Ask Full Court  (⌘K)"
         className="btn btn-primary fixed bottom-5 right-5 z-40 rounded-full px-4 py-3 shadow-lg"
       >
         Ask
@@ -143,15 +142,14 @@ export function AskFullCourt({
             type="button"
             onClick={() => setSize(NEXT_SIZE[size])}
             className="btn btn-ghost px-2 py-1 text-xs"
-            title={`Resize (now ${size})`}
           >
             {size === "lg" ? "⤡ Small" : "⤢ Bigger"}
           </button>
           <button
             type="button"
             onClick={() => setOpen(false)}
+            aria-label="Close"
             className="btn btn-ghost px-2 py-1 text-xs"
-            title="Close (Esc)"
           >
             ✕
           </button>

@@ -13,18 +13,6 @@ const SHORT: Record<string, string> = {
   per36: "Per 36 minutes",
 };
 
-const TITLE: Record<string, string> = {
-  game: "Counting stats as a per-game average",
-  per36: "Counting stats scaled to 36 minutes of playing time",
-  per75:
-    "Counting stats per 75 possessions — roughly what a starter uses in a " +
-    "game, so the numbers stay close to the per-game ones they replace",
-  per100:
-    "Counting stats per 100 possessions the player's team used while they " +
-    "were on the floor — their minutes times their team's pace, since ESPN " +
-    "publishes no possession data",
-};
-
 /**
  * Picks the basis counting stats are expressed on. It changes percentiles,
  * ranks and filters too, not just the number printed, because a player's
@@ -55,7 +43,6 @@ export function RateToggle({
           key={b}
           type="button"
           onClick={() => onChange(b)}
-          title={TITLE[b] ?? meta.rate_bases[b]}
           className={cn(
             "whitespace-nowrap border-b-2 pb-0.5 text-sm transition",
             b === value
@@ -92,7 +79,6 @@ export function RateToggle({
                 key={b}
                 type="button"
                 onClick={() => onChange(b)}
-                title={TITLE[b] ?? meta.rate_bases[b]}
                 aria-pressed={b === value}
                 className={cn(
                   "relative z-10 w-8 rounded-full py-px text-[11px] tabular-nums transition-colors",

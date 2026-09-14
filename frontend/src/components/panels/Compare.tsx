@@ -156,7 +156,7 @@ export function Compare({ meta }: { meta: Meta }) {
               />
               <button
                 onClick={() => removePick(i)}
-                title="Remove"
+                aria-label="Remove this player"
                 className="h-[42px] rounded-lg border border-border px-3 text-mute transition hover:text-ink"
               >
                 ×
@@ -302,7 +302,6 @@ export function Compare({ meta }: { meta: Meta }) {
                               {r.percentiles[m] != null ? ordinal(r.percentiles[m]) : "—"}
                               {r.vs_league[m] != null && (
                                 <span
-                                  title="vs. that season's league average"
                                   className={r.vs_league[m] >= 0 ? " text-accent2" : " text-bad"}
                                 >
                                   {" "}

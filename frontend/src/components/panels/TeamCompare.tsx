@@ -246,7 +246,6 @@ export function TeamCompare({ meta }: { meta: Meta }) {
                       key={r.team}
                       ref={register(r.team)}
                       onClick={() => togglePick(r.team)}
-                      title="Name this team on the chart"
                       className={cn(
                         "cursor-pointer border-t border-border/60 transition hover:bg-border/30",
                         picked.includes(r.team) && "bg-accent/10"
