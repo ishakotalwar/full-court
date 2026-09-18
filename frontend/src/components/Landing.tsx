@@ -20,7 +20,7 @@ const TONES = {
     bar: "bg-accent",
     edge: "hover:border-accent focus-visible:border-accent",
     glow: "hover:shadow-accent/25 focus-visible:shadow-accent/25",
-    cta: "rounded-full border-black/10 bg-white text-neutral-900 shadow-sm group-hover:border-accent group-hover:bg-accent group-hover:text-onAccent group-active:border-accent group-active:bg-accent group-active:text-onAccent group-focus-visible:border-accent group-focus-visible:bg-accent group-focus-visible:text-onAccent",
+    cta: "rounded-full border-black/10 bg-white text-neutral-900 group-hover:border-accent group-hover:bg-accent group-hover:text-onAccent group-active:border-accent group-active:bg-accent group-active:text-onAccent group-focus-visible:border-accent group-focus-visible:bg-accent group-focus-visible:text-onAccent",
   },
   accent2: {
     text: "text-accent2",
@@ -28,7 +28,7 @@ const TONES = {
     bar: "bg-accent2",
     edge: "hover:border-accent2 focus-visible:border-accent2",
     glow: "hover:shadow-accent2/25 focus-visible:shadow-accent2/25",
-    cta: "rounded-full border-black/10 bg-white text-neutral-900 shadow-sm group-hover:border-accent2 group-hover:bg-accent2 group-hover:text-onAccent2 group-active:border-accent2 group-active:bg-accent2 group-active:text-onAccent2 group-focus-visible:border-accent2 group-focus-visible:bg-accent2 group-focus-visible:text-onAccent2",
+    cta: "rounded-full border-black/10 bg-white text-neutral-900 group-hover:border-accent2 group-hover:bg-accent2 group-hover:text-onAccent2 group-active:border-accent2 group-active:bg-accent2 group-active:text-onAccent2 group-focus-visible:border-accent2 group-focus-visible:bg-accent2 group-focus-visible:text-onAccent2",
   },
   good: {
     text: "text-good",
@@ -38,7 +38,7 @@ const TONES = {
     glow: "hover:shadow-good/25 focus-visible:shadow-good/25",
     // No `onGood` token exists, and none is needed: every palette's good is
     // far enough from its background for the page ground to read on it.
-    cta: "rounded-full border-black/10 bg-white text-neutral-900 shadow-sm group-hover:border-good group-hover:bg-good group-hover:text-bg group-active:border-good group-active:bg-good group-active:text-bg group-focus-visible:border-good group-focus-visible:bg-good group-focus-visible:text-bg",
+    cta: "rounded-full border-black/10 bg-white text-neutral-900 group-hover:border-good group-hover:bg-good group-hover:text-bg group-active:border-good group-active:bg-good group-active:text-bg group-focus-visible:border-good group-focus-visible:bg-good group-focus-visible:text-bg",
   },
 } as const;
 
@@ -117,7 +117,7 @@ export function Landing({
 
   return (
     <div className="mx-auto flex max-w-6xl flex-col px-6 pb-5 pt-5 lg:h-screen">
-      <section className="card relative shrink-0 overflow-hidden shadow-2xl shadow-black/20">
+      <section className="card relative shrink-0 overflow-hidden">
         {/* The half court the app is named for, drawn to scale and sunk almost
             into the panel: at this opacity it reads as texture until you look
             for it, which is the most a background should ask. */}
@@ -147,7 +147,7 @@ export function Landing({
             be taken in without scrolling. */}
         <div className="relative flex flex-wrap items-center gap-x-8 gap-y-6 px-7 py-7">
           <div className="min-w-0 flex-1">
-            <h1 className="text-5xl font-extrabold leading-none tracking-tighter">
+            <h1 className="font-display text-5xl font-extrabold leading-none tracking-tight">
               <span className="text-ink">Full</span>
               <span className="bg-gradient-to-r from-accent to-accent2 bg-clip-text text-transparent">
                 Court
@@ -172,7 +172,7 @@ export function Landing({
                   className={cn(
                     "rounded-full px-5 py-1.5 text-sm font-semibold tracking-tight transition",
                     l.key === league
-                      ? "bg-accent text-onAccent shadow-lg shadow-accent/30"
+                      ? "bg-accent text-onAccent"
                       : "text-mute hover:text-ink",
                     !l.available && l.key !== league && "cursor-not-allowed opacity-40"
                   )}
@@ -216,7 +216,7 @@ export function Landing({
                 />
               </span>
               <span>
-                <span className="block text-[15px] font-semibold tracking-tight text-ink">
+                <span className="block font-display text-base font-bold tracking-tight text-ink">
                   Go to {active?.label ?? league.toUpperCase()}
                   <span
                     aria-hidden
@@ -239,7 +239,7 @@ export function Landing({
                 <dt className="label">{s.label}</dt>
                 <dd
                   className={cn(
-                    "mt-1 text-[1.9rem] font-extrabold leading-none tracking-tighter tabular-nums",
+                    "mt-1 font-display text-[2rem] font-extrabold leading-none tracking-tight tabular-nums",
                     TONES[s.tone].text
                   )}
                 >
@@ -462,7 +462,7 @@ function Entry({
         >
           {icon}
         </span>
-        <h3 className="text-xl font-semibold tracking-tight text-ink">{title}</h3>
+        <h3 className="font-display text-xl font-bold tracking-tight text-ink">{title}</h3>
       </div>
       <p className="mb-4 mt-3 max-w-[34ch] text-[15px] leading-relaxed text-mute">{blurb}</p>
       {/* A span, because the whole card is already the button — but it has to

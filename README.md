@@ -4,6 +4,9 @@ NBA and WNBA analytics. Live at <https://full-court-six.vercel.app>
 
 ![Player overview](docs/screenshot.png)
 
+Every page has its own address, and a link carries what you were looking at:
+`/nba/players/shots?player=Nikola+Jokic&season=2024&mode=scatter`.
+
 ## Stats
 
 - Player pages with percentiles, career trends and recent games
@@ -46,6 +49,22 @@ cd frontend && npm install && cd ..
 uvicorn backend.main:app --reload --port 8000   # one terminal
 cd frontend && npm run dev                      # another, opens :5173
 ```
+
+Ask reads the local Parquet either way. A question the rule parser can't place
+falls back to Claude, which wants `ANTHROPIC_API_KEY` in the environment —
+without one those questions say so rather than guess.
+
+## Deploying
+
+Vercel serves `frontend/dist` and runs the API as a single Python function.
+Three things the setup depends on:
+
+- A catch-all route to `index.html`. Without it every URL but `/` is a 404 at
+  the edge, before the app that understands the path has loaded.
+- `fastparquet` rather than `pyarrow` in `requirements.txt`. pyarrow is 112 MB
+  against a 250 MB function bundle, so nothing may import it.
+- Web Analytics switched on in the Vercel project, or `@vercel/analytics`
+  records nothing.
 
 Data is ESPN's via hoopR and wehoop, committed as Parquet in `data/`. The
 per-possession defensive detail comes from [pbpstats](https://www.pbpstats.com).

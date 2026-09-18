@@ -21,7 +21,9 @@ export function CardHeader({
       <div className="flex min-w-0 items-center gap-3">
         {lead}
         <div className="min-w-0">
-          <div className="truncate text-base font-semibold tracking-tight text-ink">{title}</div>
+          <div className="truncate font-display text-lg font-semibold uppercase tracking-wide text-ink">
+            {title}
+          </div>
           {subtitle && <div className="mt-0.5 text-xs text-mute">{subtitle}</div>}
         </div>
       </div>

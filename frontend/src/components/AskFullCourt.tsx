@@ -185,7 +185,7 @@ export function AskFullCourt({
               <button
                 key={ex}
                 type="button"
-                className="block w-full rounded-lg border border-border bg-bg px-3 py-2 text-left text-xs text-mute hover:border-accent hover:text-ink"
+                className="block w-full border border-border bg-bg px-3 py-2 text-left text-xs text-mute hover:border-accent hover:text-ink"
                 onClick={() => {
                   setQuestion(ex);
                   run(ex);
@@ -222,7 +222,7 @@ function Answer({
         <div>{result.summary}</div>
         <div className="label">Did you mean</div>
         {(result.options ?? []).map((o) => (
-          <div key={o.player_name} className="rounded-lg border border-border bg-bg px-3 py-2 text-xs">
+          <div key={o.player_name} className="border border-border bg-bg px-3 py-2 text-xs">
             <div className="text-ink">{o.player_name}</div>
             <div className="text-mute">{o.seasons.map(fmt).join(", ")}</div>
           </div>
@@ -299,7 +299,7 @@ function PlayerRows({
   );
   if (rows.length === 0) return <div className="text-mute">No player-seasons matched.</div>;
   return (
-    <div className="overflow-x-auto rounded-lg border border-border">
+    <div className="overflow-x-auto border border-border">
       <table className="w-full text-xs">
         <thead className="text-mute">
           <tr className="border-b border-border">
@@ -344,7 +344,7 @@ function SimilarRows({
       {rows.map((m, i) => (
         <li
           key={`${m.player_id}-${m.season}`}
-          className="flex items-center gap-2 rounded-lg border border-border bg-bg px-2.5 py-1.5 text-xs"
+          className="flex items-center gap-2 border border-border bg-bg px-2.5 py-1.5 text-xs"
         >
           <span className="w-4 text-mute">{i + 1}</span>
           <Avatar name={m.player_name} id={m.player_id} league={meta.league} size={22} />
@@ -361,7 +361,7 @@ function SimilarRows({
 function CompareRows({ rows }: { rows: any[] }) {
   const metrics = Object.keys(rows[0]?.values ?? {});
   return (
-    <div className="overflow-x-auto rounded-lg border border-border">
+    <div className="overflow-x-auto border border-border">
       <table className="w-full text-xs">
         <thead className="text-mute">
           <tr className="border-b border-border">
@@ -392,7 +392,7 @@ function CompareRows({ rows }: { rows: any[] }) {
 
 function ZoneRows({ rows }: { rows: any[] }) {
   return (
-    <div className="overflow-x-auto rounded-lg border border-border">
+    <div className="overflow-x-auto border border-border">
       <table className="w-full text-xs">
         <thead className="text-mute">
           <tr className="border-b border-border">
@@ -437,7 +437,7 @@ function ImpactRows({ rows, metric, meta }: { rows: any[]; metric?: string; meta
     metricLabel(col);
   if (rows.length === 0) return <div className="text-mute">No rated players that season.</div>;
   return (
-    <div className="overflow-x-auto rounded-lg border border-border">
+    <div className="overflow-x-auto border border-border">
       <table className="w-full text-xs">
         <thead className="text-mute">
           <tr className="border-b border-border">
@@ -472,7 +472,7 @@ function ImpactRows({ rows, metric, meta }: { rows: any[]; metric?: string; meta
 function LineupRows({ rows }: { rows: any[] }) {
   if (rows.length === 0) return <div className="text-mute">No groups cleared the minutes floor.</div>;
   return (
-    <div className="rounded-lg border border-border">
+    <div className="border border-border">
       <table className="w-full text-xs">
         <thead className="text-mute">
           <tr className="border-b border-border">
@@ -518,7 +518,7 @@ function WowyRows({ rows }: { rows: any[] }) {
       ? { ortg: on.ortg - off.ortg, drtg: on.drtg - off.drtg, net: on.net - off.net }
       : null;
   return (
-    <div className="overflow-x-auto rounded-lg border border-border">
+    <div className="overflow-x-auto border border-border">
       <table className="w-full text-xs">
         <thead className="text-mute">
           <tr className="border-b border-border">
@@ -591,7 +591,7 @@ function TeamRows({
 }) {
   if (rows.length === 0) return <div className="text-mute">No team-seasons in that range.</div>;
   return (
-    <div className="overflow-x-auto rounded-lg border border-border">
+    <div className="overflow-x-auto border border-border">
       <table className="w-full text-xs">
         <thead className="text-mute">
           <tr className="border-b border-border">

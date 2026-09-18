@@ -569,7 +569,7 @@ export function Ratings({ meta }: { meta: Meta }) {
                       <path d="M4 19V5M9 19v-6M14 19v-9M19 19V8" />
                     </svg>
                   </span>
-                  <div className="font-semibold text-ink">Pick a player</div>
+                  <div className="font-display text-lg font-bold tracking-tight text-ink">Pick a player</div>
                   <p className="max-w-xs text-sm leading-relaxed text-mute">
                     Choose a row from the table, or a dot on the chart, to see how
                     their rating was arrived at.
@@ -592,7 +592,7 @@ export function Ratings({ meta }: { meta: Meta }) {
                 subtitle={`${selected.team_abbr} · ${selected.games} games · ${selected.poss.toFixed(0)} possessions`}
                 right={
                   <div className="text-right">
-                    <div className="text-xl font-semibold tabular-nums">
+                    <div className="font-display text-2xl font-semibold tabular-nums">
                       {isIndex(ranked)
                         ? (selected[ranked] ?? 0).toFixed(1)
                         : signed(value(selected, ranked), scale === "total" ? 0 : 2)}

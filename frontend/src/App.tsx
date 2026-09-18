@@ -178,7 +178,7 @@ function Shell({ leagues }: { leagues: LeagueInfo[] }) {
               onClick={() => navigate("/")}
               className="text-left"
             >
-              <div className="text-2xl font-bold leading-none tracking-tight">
+              <div className="font-display text-2xl font-extrabold leading-none tracking-tight">
                 Full<span className="text-accent">Court</span>
               </div>
             </button>

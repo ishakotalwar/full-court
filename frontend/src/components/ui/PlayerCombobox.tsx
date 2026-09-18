@@ -39,7 +39,7 @@ export function PlayerCombobox({
         <button
           type="button"
           className={cn(
-           "flex h-[42px] w-full items-center gap-2 rounded-lg border border-border bg-bg px-3.5 text-left text-sm",
+           "flex h-[42px] w-full items-center gap-2 border border-edge bg-bg px-3.5 text-left text-sm",
            "hover:border-mute focus:border-accent focus:outline-none",
             className
           )}
@@ -52,7 +52,7 @@ export function PlayerCombobox({
         <Popover.Content
           align="start"
           sideOffset={6}
-          className="z-50 w-[--radix-popover-trigger-width] rounded-lg border border-border bg-panel p-2"
+          className="z-50 w-[--radix-popover-trigger-width] border border-border bg-panel p-2"
           onOpenAutoFocus={(e) => {
             e.preventDefault();
             inputRef.current?.focus();

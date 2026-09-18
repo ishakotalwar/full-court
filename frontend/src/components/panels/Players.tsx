@@ -38,7 +38,7 @@ function EmptyPlayer() {
           <path d="M5 20v-1a7 7 0 0 1 14 0v1" />
         </svg>
       </span>
-      <div className="text-lg font-semibold text-ink">Pick a player to begin</div>
+      <div className="font-display text-xl font-bold tracking-tight text-ink">Pick a player to begin</div>
       <p className="max-w-sm text-sm leading-relaxed text-mute">
         Their season line, percentiles against the league, career trend and
         recent games all appear here. Start typing a name in the box above.
@@ -141,7 +141,7 @@ export function Players({ meta }: { meta: Meta }) {
               size={84}
             />
             <div className="min-w-0 flex-1">
-              <div className="text-xl font-semibold text-ink">
+              <div className="font-display text-2xl font-semibold tracking-tight text-ink">
                 {sel.playerName || "Select a player"}
               </div>
               <div className="mt-1 flex flex-wrap gap-x-3 gap-y-1 text-sm text-mute">
@@ -172,7 +172,7 @@ export function Players({ meta }: { meta: Meta }) {
               {stats.map((s: any) => (
                 <div key={s.metric}>
                   <div className="label">{shortLabel(s.metric)}</div>
-                  <div className="mt-0.5 text-lg font-semibold tabular-nums text-ink">
+                  <div className="mt-0.5 font-display text-2xl font-semibold tabular-nums text-ink">
                     {formatValue(s.metric, s.value)}
                   </div>
                   <div className={cn("text-xs tabular-nums", pctTone(s.percentile ?? null))}>

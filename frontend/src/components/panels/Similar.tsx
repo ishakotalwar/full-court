@@ -163,7 +163,7 @@ export function Similar({ meta }: { meta: Meta }) {
           </div>
 
           {preset === "Custom" && features.length > 0 && (
-            <div className="grid gap-x-6 gap-y-3 rounded-lg border border-border p-4 md:grid-cols-2 lg:grid-cols-4">
+            <div className="grid gap-x-6 gap-y-3 border border-border p-4 md:grid-cols-2 lg:grid-cols-4">
               {features.map((f) => (
                 <div key={f}>
                   <div className="mb-1 flex justify-between text-xs">

@@ -10,6 +10,8 @@ export default {
         bg: "rgb(var(--c-bg) / <alpha-value>)",
         panel: "rgb(var(--c-panel) / <alpha-value>)",
         border: "rgb(var(--c-border) / <alpha-value>)",
+        // The outline round a box, as opposed to a rule inside one.
+        edge: "rgb(var(--c-edge) / <alpha-value>)",
         ink: "rgb(var(--c-ink) / <alpha-value>)",
         mute: "rgb(var(--c-mute) / <alpha-value>)",
         accent: "rgb(var(--c-accent) / <alpha-value>)",
@@ -20,15 +22,10 @@ export default {
         onAccent2: "rgb(var(--c-on-accent2) / <alpha-value>)",
       },
       fontFamily: {
-        sans: [
-          "Inter",
-          "ui-sans-serif",
-          "system-ui",
-          "-apple-system",
-          "Segoe UI",
-          "Roboto",
-          "sans-serif",
-        ],
+        // Resolved from the CSS variable in index.css, so there is one place
+        // to change the typeface rather than two that can disagree.
+        sans: ["var(--font-sans)"],
+        display: ["var(--font-display)"],
       },
       // Named here rather than as an arbitrary `animate-[spin_1.1s_...]`:
       // Tailwind only emits `@keyframes spin` for its own `animate-spin`
