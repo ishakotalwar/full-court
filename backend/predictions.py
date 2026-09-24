@@ -619,6 +619,19 @@ def roster_source(league: League, season: int) -> str:
 
 
 @lru_cache(maxsize=8)
+def _sidelined(league: League, target_season: int,
+               live: bool | None = None) -> dict[str, list[dict]]:
+    """Per team, the rotation players ruled out of `target_season`'s next game.
+
+    These are exactly the players `_rotations` drops: on the roster, inside the
+    minutes order, and carrying a status that reads as unavailable. Their
+    minutes are already shared among the team-mates who are projected, so the
+    list is what explains a line that looks too generous.
+    """
+    return _rotations_and_out(league, target_season, live)[1]
+
+
+@lru_cache(maxsize=8)
 def _rotations(league: League, target_season: int,
                live: bool | None = None) -> dict[str, list[dict]]:
     """Each team's rotation for `target_season`, every player projected.
@@ -627,6 +640,15 @@ def _rotations(league: League, target_season: int,
     minutes — the schedule carries no roster, and trades and signings made
     after that season are not in the data.
     """
+    return _rotations_and_out(league, target_season, live)[0]
+
+
+@lru_cache(maxsize=8)
+def _rotations_and_out(
+    league: League, target_season: int, live: bool | None = None
+) -> tuple[dict[str, list[dict]], dict[str, list[dict]]]:
+    """(who is projected, who is ruled out), per team. One pass, because the
+    second list is the offcut of building the first."""
     hist = _player_history(league)
     # A season with games already played is the best description of who is
     # playing and how well; only fall back to earlier seasons before tip-off.
@@ -650,6 +672,7 @@ def _rotations(league: League, target_season: int,
     injury_index = _injury_index(league)
 
     out: dict[str, list[dict]] = {}
+    sidelined: dict[str, list[dict]] = {}
     for row in active.itertuples():
         pid = int(row.player_id)
         if signed is not None:
@@ -662,7 +685,17 @@ def _rotations(league: League, target_season: int,
             continue
         injury = injury_index.get(pid)
         if injury and UNAVAILABLE.search(injury.get("status", "")):
-            continue  # ruled out: no line, and their minutes go to team-mates
+            # Ruled out: no line, and their minutes go to team-mates. Kept
+            # here so the game page can say who is missing rather than just
+            # quietly leaving them off the sheet.
+            sidelined.setdefault(league.canonical_team(team), []).append({
+                "player_id": pid,
+                "player_name": str(getattr(row, "player_name", "") or ""),
+                "minutes": round(float(getattr(row, "min", 0.0) or 0.0), 1),
+                "games_played": int(row.gp_num),
+                "injury": injury,
+            })
+            continue
 
         try:
             p = project_player(league, int(row.player_id), str(target_season),
@@ -684,7 +717,10 @@ def _rotations(league: League, target_season: int,
     for team in out:
         out[team].sort(key=lambda r: r["minutes"], reverse=True)
         _fit_to_team_minutes(league, out[team], before=int(target_season))
-    return out
+    # Biggest absence first: the player whose minutes most need covering.
+    for team in sidelined:
+        sidelined[team].sort(key=lambda r: r["minutes"], reverse=True)
+    return out, sidelined
 
 
 def _fit_to_team_minutes(league: League, players: list[dict],
@@ -789,14 +825,17 @@ def game_player_lines(league: League, home: str, away: str, season: int,
     season it is about to score.
     """
     return _sides(league, _rotations(league, int(season), live),
+                  _sidelined(league, int(season), live),
                   _defense_factors(league, int(season)), home, away, top)
 
 
 def _sides(league: League, rotations: dict[str, list[dict]],
+           sidelined: dict[str, list[dict]],
            defense: dict[str, float], home: str, away: str, top: int) -> dict:
     """Apply the per-game adjustments to both rotations. The one path the app
     and the backtest share, so what is scored is what is shown."""
     out: dict[str, list[dict]] = {}
+    missing: dict[str, list[dict]] = {}
     context: dict[str, dict] = {}
     for side, team, opponent in (("home", home, away), ("away", away, home)):
         opp_factor = defense.get(league.canonical_team(opponent), 1.0)
@@ -816,12 +855,13 @@ def _sides(league: League, rotations: dict[str, list[dict]],
                    for m in GAME_LINE_METRICS},
             })
         out[side] = rows
+        missing[side] = sidelined.get(league.canonical_team(team), [])
         context[side] = {
             "team": team,
             "opponent_defense": round(opp_factor, 3),
             "venue_factor": round(venue, 3),
         }
-    return {"players": out, "adjustments": context}
+    return {"players": out, "unavailable": missing, "adjustments": context}
 
 
 def game_actual_lines(league: League, date: str, home: str, away: str) -> dict:
@@ -899,7 +939,10 @@ def game_line_backtest(league: League = DEFAULT, metric: str = "pts",
 
     errors: dict[str, list[float]] = {"line": [], "season": [], "naive": [], "hindsight": []}
     for game in played.itertuples():
-        lines = _sides(league, rotations, defense, game.home, game.away, ROTATION_SIZE)
+        # The backtest scores lines, not availability: today's injury report
+        # says nothing about who was out on a night two seasons ago.
+        lines = _sides(league, rotations, {}, defense,
+                       game.home, game.away, ROTATION_SIZE)
         for side, team in (("home", game.home), ("away", game.away)):
             key_team = league.canonical_team(team)
             for row in lines["players"][side]:

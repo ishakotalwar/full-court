@@ -306,6 +306,7 @@ function GameRow({
                     team={game.away}
                     label="away"
                     rows={lines.players?.away ?? []}
+                    out={lines.unavailable?.away ?? []}
                     adjustment={lines.adjustments?.away}
                     completed={game.completed}
                   />
@@ -313,6 +314,7 @@ function GameRow({
                     team={game.home}
                     label="home"
                     rows={lines.players?.home ?? []}
+                    out={lines.unavailable?.home ?? []}
                     adjustment={lines.adjustments?.home}
                     completed={game.completed}
                   />
@@ -332,16 +334,20 @@ function TeamLines({
   team,
   label,
   rows,
+  out,
   adjustment,
   completed,
 }: {
   team: string;
   label: string;
   rows: any[];
+  /** Rotation players ruled out — no line, and their minutes already shared
+   *  among the names above. */
+  out: any[];
   adjustment?: { opponent_defense: number; venue_factor: number };
   completed: boolean;
 }) {
-  if (!rows.length) {
+  if (!rows.length && !out.length) {
     return (
       <div className="text-xs text-mute">
         No rotation on file for {team}.
@@ -390,6 +396,33 @@ function TeamLines({
           ))}
         </tbody>
       </table>
+
+      {out.length > 0 && (
+        <div className="mt-2.5 border-t border-border/40 pt-2">
+          <div className="mb-1 text-[11px] font-medium uppercase tracking-wider text-bad">
+            Out · {out.length}
+          </div>
+          <ul className="space-y-0.5">
+            {out.map((r) => (
+              <li key={r.player_id} className="flex items-baseline gap-1.5 text-xs">
+                <span className="truncate text-mute line-through decoration-bad/50">
+                  {r.player_name}
+                </span>
+                {r.injury?.type && (
+                  <span className="shrink-0 text-[11px] text-mute">{r.injury.type}</span>
+                )}
+                <span className="ml-auto shrink-0 text-[11px] tabular-nums text-mute">
+                  {r.minutes} mpg
+                </span>
+              </li>
+            ))}
+          </ul>
+          {/* Said once per team, because it explains every line above it. */}
+          <div className="mt-1.5 text-[11px] leading-snug text-mute">
+            Their minutes are already shared among the players projected above.
+          </div>
+        </div>
+      )}
     </div>
   );
 }
