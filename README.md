@@ -5,7 +5,7 @@ NBA and WNBA analytics. Live at <https://full-court-six.vercel.app>
 ![Player overview](docs/screenshot.png)
 
 Every page has its own address, and a link carries what you were looking at:
-`/nba/players/shots?player=Nikola+Jokic&season=2024&mode=scatter`.
+`/nba/players/shots?player=Stephen+Curry&season=2024&mode=scatter`.
 
 ## Stats
 
