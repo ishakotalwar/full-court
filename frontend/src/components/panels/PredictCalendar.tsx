@@ -409,9 +409,12 @@ function TeamLines({
               </td>
               {(["pts", "reb", "ast"] as const).map((m) => (
                 <td key={m} className="py-1 text-right tabular-nums text-ink">
-                  {r[m] == null ? "—" : r[m].toFixed(1)}
+                  {/* Whole numbers: nobody scores 16.9 points in a game, and
+                      a line sat beside the box score should be in the same
+                      units as the box score. The API keeps the decimals. */}
+                  {r[m] == null ? "—" : Math.round(r[m])}
                   {completed && r.actual && (
-                    <span className="ml-1 text-mute">({r.actual[m]})</span>
+                    <span className="ml-1 text-mute">({Math.round(r.actual[m])})</span>
                   )}
                 </td>
               ))}
