@@ -25,6 +25,10 @@ const toISO = (y: number, m: number, d: number) =>
 
 type DayInfo = { date: string; games: number; upcoming: number };
 
+/** ESPN's own state for a game: before it, during it, after it. `post` with
+ *  `completed` false is a game that never produced a result. */
+type GameStatus = "pre" | "in" | "post";
+
 /**
  * Browse the schedule a month at a time and see what the model makes of each
  * game. The schedule is the one thing the historical data cannot supply — it
@@ -257,7 +261,15 @@ function GameRow({
         ) : (
           <span className="text-xs text-mute">no rating</span>
         )}
-        {game.completed && <span className="text-xs text-mute">final</span>}
+        {/* `completed` alone cannot describe a game ESPN has moved past but
+            has no result for — a postponement that was never replayed. Left
+            unlabelled it reads as upcoming, so a July game sat on the
+            predictions page all season showing a live win probability. */}
+        {game.completed ? (
+          <span className="text-xs text-mute">final</span>
+        ) : game.status === "post" ? (
+          <span className="text-xs text-mute">not played</span>
+        ) : null}
       </button>
 
       {open && (
