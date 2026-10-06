@@ -305,7 +305,9 @@ function GameRow({
           <div className={cn("pt-4", p && "mt-5 border-t border-border/60")}>
             <div className="label mb-2">
               Projected player lines
-              {game.completed && " · actual in parentheses"}
+              {game.completed && lines?.has_box_score && " · actual in parentheses"}
+              {game.completed && lines && !lines.has_box_score &&
+                " · no box score for this game"}
             </div>
             {linesErr ? (
               <div className="text-xs text-bad">{linesErr}</div>
@@ -321,6 +323,7 @@ function GameRow({
                     out={lines.unavailable?.away ?? []}
                     adjustment={lines.adjustments?.away}
                     completed={game.completed}
+                    hasBoxScore={Boolean(lines.has_box_score)}
                   />
                   <TeamLines
                     team={game.home}
@@ -329,6 +332,7 @@ function GameRow({
                     out={lines.unavailable?.home ?? []}
                     adjustment={lines.adjustments?.home}
                     completed={game.completed}
+                    hasBoxScore={Boolean(lines.has_box_score)}
                   />
                 </div>
               </>
@@ -349,6 +353,7 @@ function TeamLines({
   out,
   adjustment,
   completed,
+  hasBoxScore,
 }: {
   team: string;
   label: string;
@@ -358,6 +363,10 @@ function TeamLines({
   out: any[];
   adjustment?: { opponent_defense: number; venue_factor: number };
   completed: boolean;
+  /** Whether a box score for this game exists at all. The game log carries the
+   *  regular season only, so a postseason game is complete and has none — and
+   *  without this every player in it would be marked as not having played. */
+  hasBoxScore: boolean;
 }) {
   if (!rows.length && !out.length) {
     return (
@@ -394,7 +403,9 @@ function TeamLines({
               <td className="truncate py-1 pr-2 text-ink">
                 {r.player_name}
                 <InjuryFlag injury={r.injury} />
-                {completed && !r.actual && <span className="ml-1.5 text-mute">dnp</span>}
+                {completed && hasBoxScore && !r.actual && (
+                  <span className="ml-1.5 text-mute">dnp</span>
+                )}
               </td>
               {(["pts", "reb", "ast"] as const).map((m) => (
                 <td key={m} className="py-1 text-right tabular-nums text-ink">

@@ -166,6 +166,11 @@ def player_career(player_id: int, league: str | None = None, recent: int = 10,
                 games.append({
                     "date": x["GAME_DATE"].isoformat() if pd.notna(x["GAME_DATE"]) else None,
                     "season": x.get("season"),
+                    # Playoff games are the most recent games a player has
+                    # during a playoff run, so they are here — marked, because
+                    # a 40-point night in May is not the same claim as one in
+                    # a January back-to-back.
+                    "season_type": x.get("season_type", "regular"),
                     "matchup": x.get("MATCHUP"),
                     "min": x.get("MIN"), "pts": x.get("PTS"), "reb": x.get("REB"),
                     "ast": x.get("AST"), "stl": x.get("STL"), "blk": x.get("BLK"),

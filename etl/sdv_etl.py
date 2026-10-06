@@ -10,7 +10,7 @@ Outputs, per league, into data/ with the league's suffix:
     players_*      season aggregates      (Compare, Trends, Percentiles, Similar)
     teams_*        team-season totals     (Teams)
     teams_master_* franchise list
-    gamelog_*      per-game player rows   (Game Log)
+    gamelog_*      per-game player rows, regular season and playoffs
     shots_*        shot coordinates       (Shot Chart)
     player_bio_*   birthdates             (Age Curves)
 
@@ -45,9 +45,16 @@ REPOS = {
 
 REGULAR_SEASON = 2  # ESPN season_type
 POSTSEASON = 3
-# What a shot row's `season_type` says, so the shot chart can show one, the
-# other, or both. Everything else in the app is regular season only.
-SEASON_TYPE_LABEL = {REGULAR_SEASON: "regular", POSTSEASON: "playoffs"}
+PLAY_IN = 5
+# The play-in decides who enters the bracket, so it counts with the games it
+# qualifies a team for rather than with the season it follows.
+PLAYOFF_TYPES = (POSTSEASON, PLAY_IN)
+# What a row's `season_type` says, so a chart or a game log can show one, the
+# other, or both. Season averages stay regular season only: a seven-game
+# playoff run alongside an 82-game season would not be the same measurement.
+SEASON_TYPE_LABEL = {REGULAR_SEASON: "regular",
+                     POSTSEASON: "playoffs",
+                     PLAY_IN: "playoffs"}
 FIRST_SEASON = 2003
 TIMEOUT = 120
 
@@ -99,13 +106,21 @@ def _rate(num: pd.Series, den: pd.Series) -> pd.Series:
     return num.div(den.where(den > 0))
 
 
-def real_franchise_games(tb: pd.DataFrame) -> set:
-    """game_ids in which both sides are actual franchises (no All-Star squads)."""
+def real_franchise_games(tb: pd.DataFrame, season_types=(REGULAR_SEASON,)) -> set:
+    """game_ids in which both sides are actual franchises (no All-Star squads).
+
+    Which teams are real is always decided on the regular season — that is the
+    only part of the year long enough for the games-played floor to mean
+    anything — and the question is then asked of whichever season types the
+    caller wants games from.
+    """
     reg = tb[tb["season_type"] == REGULAR_SEASON]
     played = reg.groupby(["season", "team_id"])["game_id"].nunique()
     valid = played[played >= MIN_TEAM_GAMES].index
-    is_real = pd.MultiIndex.from_arrays([reg["season"], reg["team_id"]]).isin(valid)
-    sides = reg[is_real].groupby("game_id")["team_id"].nunique()
+
+    rows = tb[tb["season_type"].isin(season_types)]
+    is_real = pd.MultiIndex.from_arrays([rows["season"], rows["team_id"]]).isin(valid)
+    sides = rows[is_real].groupby("game_id")["team_id"].nunique()
     return set(sides[sides == 2].index)
 
 
@@ -121,13 +136,16 @@ PLAYER_NUM_COLS = [
 ]
 
 
-def _regular_player_rows(pb: pd.DataFrame, games: set) -> pd.DataFrame:
-    p = pb[(pb["season_type"] == REGULAR_SEASON)
+def _player_rows(pb: pd.DataFrame, games: set,
+                 season_types=(REGULAR_SEASON,)) -> pd.DataFrame:
+    """Box-score rows for real games, with the season type kept as a label."""
+    p = pb[pb["season_type"].isin(season_types)
            & (~pb["did_not_play"].fillna(False))
            & (pb["game_id"].isin(games))
            & (pb["athlete_id"].notna())].copy()
     for c in PLAYER_NUM_COLS:
         p[c] = pd.to_numeric(p[c], errors="coerce")
+    p["season_type_label"] = p["season_type"].map(SEASON_TYPE_LABEL)
     return p
 
 
@@ -194,9 +212,15 @@ def build_players(p: pd.DataFrame) -> pd.DataFrame:
 
 
 def build_gamelog(p: pd.DataFrame) -> pd.DataFrame:
-    """Per-game rows using nba_api's column names, so the API layer is unchanged."""
+    """Per-game rows using nba_api's column names, so the API layer is unchanged.
+
+    Both halves of the year, told apart by `season_type`. Every reader that
+    means "the regular season" filters on it; the game page, which wants the
+    box score for one game whenever it was played, does not.
+    """
     g = pd.DataFrame({
         "player_id": p["athlete_id"].astype("int64"),
+        "season_type": p["season_type_label"].astype(str),
         "player_name": p["athlete_display_name"],
         "season": p["season"].astype(str),
         "GAME_DATE": pd.to_datetime(p["game_date"], errors="coerce"),
@@ -271,12 +295,12 @@ def game_season_types(tb: pd.DataFrame) -> pd.Series:
 
     The shots dataset carries no season type of its own, so it borrows the team
     box scores'. All-Star games are excluded the same way the rest of the ETL
-    excludes them; anything else (preseason, play-in oddities) is simply absent
+    excludes them; anything else — preseason, exhibitions — is simply absent
     from the map and its shots are dropped.
     """
     real = real_franchise_games(tb)
     keep = tb[tb["season_type"].isin(SEASON_TYPE_LABEL)
-              & (tb["game_id"].isin(real) | (tb["season_type"] == POSTSEASON))]
+              & (tb["game_id"].isin(real) | tb["season_type"].isin(PLAYOFF_TYPES))]
     types = keep.drop_duplicates("game_id").set_index("game_id")["season_type"]
     return types.map(SEASON_TYPE_LABEL)
 
@@ -381,9 +405,18 @@ def main(argv=None):
     tb = load_seasons(league, "team_box", seasons)
 
     games = real_franchise_games(tb)
-    print(f"kept {len(games)} regular-season games "
-          f"({tb['game_id'].nunique() - len(games)} All-Star/exhibition/postseason dropped)")
-    rows = _regular_player_rows(pb, games)
+    playoff_games = real_franchise_games(tb, PLAYOFF_TYPES)
+    dropped = tb["game_id"].nunique() - len(games) - len(playoff_games)
+    print(f"kept {len(games)} regular-season and {len(playoff_games)} playoff games "
+          f"({dropped} All-Star/exhibition/preseason dropped)")
+
+    # Two row sets on purpose. Season averages, team totals and bios are the
+    # regular season and nothing else — folding a short playoff run into a
+    # per-game average would change every number the app ranks on. The game
+    # log is the one place both belong, because a game is a game.
+    rows = _player_rows(pb, games)
+    log_rows = _player_rows(pb, games | playoff_games,
+                            (REGULAR_SEASON, *PLAYOFF_TYPES))
 
     players = build_players(rows)
     write(players, "players", league,
@@ -393,7 +426,9 @@ def main(argv=None):
     master = (teams[["team_id", "team_name"]].drop_duplicates("team_id")
               .rename(columns={"team_name": "full_name"}).reset_index(drop=True))
     write(master, "teams_master", league, "")
-    write(build_gamelog(rows), "gamelog", league, "per-game rows")
+    log = build_gamelog(log_rows)
+    post = int((log["season_type"] == "playoffs").sum())
+    write(log, "gamelog", league, f"per-game rows ({post} playoff)")
 
     print(f"shot coordinates ({shot_seasons[0]}-{shot_seasons[-1]})…")
     try:

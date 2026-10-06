@@ -196,6 +196,11 @@ def game(game_id: str, league: str | None = None, top: int = predictions.ROTATIO
                                           top=max(1, min(int(top), 15)))
     actual = (predictions.game_actual_lines(lg, g.date, g.home, g.away)
               if bool(g.completed) else {})
+    # Whether a box score exists at all, which is not the same as a player
+    # having a row in one. The game log is regular season only, so every
+    # postseason game is played and has nothing to match against — and a
+    # missing box score must not be read as sixteen players sitting out.
+    has_box_score = any(rows for rows in actual.values())
 
     # Match the projection to the box score by player, so a line can be read
     # against what happened rather than beside it.
@@ -211,6 +216,7 @@ def game(game_id: str, league: str | None = None, top: int = predictions.ROTATIO
         "home": g.home, "away": g.away,
         "home_name": g.home_name, "away_name": g.away_name,
         "completed": bool(g.completed),
+        "has_box_score": has_box_score,
         "prediction": _predict_row(lg, g.home, g.away),
         **lines,
         "metrics": list(predictions.GAME_LINE_METRICS),

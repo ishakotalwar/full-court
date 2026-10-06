@@ -301,7 +301,17 @@ export function Players({ meta }: { meta: Meta }) {
                       <td className="whitespace-nowrap py-2 pr-3 text-mute">
                         {g.date?.slice(0, 10)}
                       </td>
-                      <td className="whitespace-nowrap py-2 pr-3">{g.matchup}</td>
+                      <td className="whitespace-nowrap py-2 pr-3">
+                        {g.matchup}
+                        {/* A 38-point night in the playoffs is a different
+                            claim from one in a January back-to-back, so the
+                            row says which it was. */}
+                        {g.season_type === "playoffs" && (
+                          <span className="ml-2 rounded-full bg-accent2/15 px-1.5 py-px text-[10px] font-semibold uppercase tracking-wide text-accent2">
+                            playoffs
+                          </span>
+                        )}
+                      </td>
                       {["min", "pts", "reb", "ast", "stl", "blk", "tov"].map((k) => (
                         <td key={k} className="py-2 pr-3 text-right tabular-nums">
                           {g[k] ?? "—"}

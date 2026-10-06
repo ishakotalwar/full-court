@@ -70,7 +70,7 @@ def games(league: League = DEFAULT) -> pd.DataFrame:
     "vs", so summing each side's points reconstructs the result. Games where
     only one side's box score is present are dropped rather than guessed at.
     """
-    log = data.gamelog(league).copy()
+    log = data.gamelog(league, "regular").copy()
     matchup = log["MATCHUP"].astype(str)
     # Relocations and rebrands are folded onto one abbreviation so a franchise
     # carries a single rating history rather than restarting at 1500.
@@ -558,7 +558,7 @@ def _league_team_totals(league: League, before: int | None = None) -> dict[str, 
     team, against 113.8 in 2025 alone, and normalizing toward the old number
     deflates every line by a tenth.
     """
-    log = data.gamelog(league)
+    log = data.gamelog(league, "regular")
     if log is None or log.empty:
         return {}
     frame = log.copy()
@@ -865,7 +865,11 @@ def _sides(league: League, rotations: dict[str, list[dict]],
 
 
 def game_actual_lines(league: League, date: str, home: str, away: str) -> dict:
-    """What each rotation actually did, for a game that has been played."""
+    """What each rotation actually did, for a game that has been played.
+
+    Deliberately unfiltered: a playoff game is a game, and this is the one
+    reader that wants the box score rather than the regular season.
+    """
     log = data.gamelog(league)
     if log is None:
         return {}
@@ -902,7 +906,7 @@ def game_line_backtest(league: League = DEFAULT, metric: str = "pts",
     Three rivals on exactly the same player-games: the same projection without
     the game fit, repeating last season, and the hindsight floor.
     """
-    log = data.gamelog(league)
+    log = data.gamelog(league, "regular")
     hist = _player_history(league)
     if log is None or hist.empty:
         return {}

@@ -326,10 +326,20 @@ def shots(league: League = DEFAULT) -> pd.DataFrame | None:
 
 
 @lru_cache(maxsize=8)
-def gamelog(league: League = DEFAULT) -> pd.DataFrame | None:
-    """Local per-game rows, or None if this league has none on disk."""
+def gamelog(league: League = DEFAULT, season_type: str | None = None) -> pd.DataFrame | None:
+    """Local per-game rows, or None if this league has none on disk.
+
+    The file holds both halves of the year. `season_type` narrows it —
+    "regular" is what almost everything means, and is passed explicitly rather
+    than defaulted so that a caller wanting a single game's box score, whenever
+    it was played, is a deliberate choice and not an oversight.
+    """
     df = _load_optional("gamelog", league)
-    return _with_season_str(df) if df is not None else None
+    if df is None:
+        return None
+    if season_type is not None and "season_type" in df.columns:
+        df = df[df["season_type"] == season_type]
+    return _with_season_str(df)
 
 
 @lru_cache(maxsize=8)
