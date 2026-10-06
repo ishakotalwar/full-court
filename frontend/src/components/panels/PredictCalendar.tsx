@@ -428,9 +428,7 @@ function TeamLines({
           <ul className="space-y-0.5">
             {out.map((r) => (
               <li key={r.player_id} className="flex items-baseline gap-1.5 text-xs">
-                <span className="truncate text-mute line-through decoration-bad/50">
-                  {r.player_name}
-                </span>
+                <span className="truncate text-mute">{r.player_name}</span>
                 {r.injury?.type && (
                   <span className="shrink-0 text-[11px] text-mute">{r.injury.type}</span>
                 )}

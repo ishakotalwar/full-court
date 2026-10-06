@@ -44,9 +44,17 @@ REPOS = {
 # schedule lands on the wrong date.
 GAME_DAY_TZ = "America/New_York"
 
-# Regular-season and playoff games. Excludes ALLSTAR and CC (Commissioner's
-# Cup final), whose "teams" are one-off squads with no rating.
-KEEP_TYPES = {"STD"}
+# Regular-season and playoff games. ESPN files the postseason under a type per
+# round — and inconsistently, since some playoff games arrive as STD with the
+# round only in their headline — so every round is named here. Excludes ALLSTAR
+# and CC (Commissioner's Cup final), whose "teams" are one-off squads with no
+# rating.
+KEEP_TYPES = {"STD", "RD16", "QTR", "SEMI", "FINAL"}
+
+# A bracket is published before it is known who is in it. A fixture with no
+# teams yet cannot be rated, shown as a matchup, or usefully predicted, so it
+# waits until the round that feeds it has been decided.
+UNDECIDED = "TBD"
 
 SCHEDULE_COLUMNS = [
     "game_id", "league", "season", "date", "tipoff",
@@ -184,6 +192,8 @@ def fetch(league: League, season: int) -> pd.DataFrame | None:
 def normalize(df: pd.DataFrame, league: League, season: int) -> pd.DataFrame:
     if "type_abbreviation" in df.columns:
         df = df[df["type_abbreviation"].isin(KEEP_TYPES)]
+    df = df[(df["home_abbreviation"].astype(str) != UNDECIDED)
+            & (df["away_abbreviation"].astype(str) != UNDECIDED)]
 
     when = pd.to_datetime(df["date"], errors="coerce", utc=True).dt.tz_convert(GAME_DAY_TZ)
     completed = df.get("status_type_completed")

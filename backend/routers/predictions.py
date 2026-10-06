@@ -182,9 +182,15 @@ def schedule(date: str, league: str | None = None):
 
 
 @router.get("/game/{game_id}")
-def game(game_id: str, league: str | None = None, top: int = predictions.ROTATION_SIZE):
+def game(game_id: str, league: str | None = None, top: int | None = None):
     """One scheduled game: the team model's read, plus a projected line for
-    every rotation player, and what they actually did if it has been played."""
+    every player on the squad, and what they actually did if it has been
+    played.
+
+    The whole squad by default. Cutting it at the projected rotation hid
+    exactly the players worth looking at — someone outside the expected eight
+    who then went and scored eighteen had no row for their line to sit in.
+    """
     lg = leagues.get(league)
     df = _schedule_frame(lg)
     row = df[df.game_id.astype(str) == str(game_id)]
@@ -192,8 +198,9 @@ def game(game_id: str, league: str | None = None, top: int = predictions.ROTATIO
         raise HTTPException(404, f"No {lg.label} game with id {game_id!r}.")
     g = row.iloc[0]
 
-    lines = predictions.game_player_lines(lg, g.home, g.away, int(g.season),
-                                          top=max(1, min(int(top), 15)))
+    lines = predictions.game_player_lines(
+        lg, g.home, g.away, int(g.season),
+        top=None if top is None else max(1, min(int(top), 30)))
     actual = (predictions.game_actual_lines(lg, g.date, g.home, g.away)
               if bool(g.completed) else {})
     # Whether a box score exists at all, which is not the same as a player
@@ -208,6 +215,25 @@ def game(game_id: str, league: str | None = None, top: int = predictions.ROTATIO
         played = {p["player_id"]: p for p in actual.get(side, [])}
         for r in rows:
             r["actual"] = played.get(r["player_id"])
+
+        # Anyone who was on the floor but has no projection: a cameo under the
+        # games floor, or a signing with no history to project from. They get a
+        # row with an empty line rather than no row at all — a finished game's
+        # table should not leave out someone who played in it.
+        shown = {r["player_id"] for r in rows}
+        for pid, box in played.items():
+            if pid in shown:
+                continue
+            rows.append({
+                "player_id": pid,
+                "player_name": box["player_name"],
+                "minutes": box.get("minutes"),
+                "games_played": None,
+                "based_on": [],
+                "injury": None,
+                **{m: None for m in predictions.GAME_LINE_METRICS},
+                "actual": box,
+            })
 
     return analytics.json_safe({
         "league": lg.key,

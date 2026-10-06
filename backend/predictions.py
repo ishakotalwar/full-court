@@ -620,7 +620,8 @@ def roster_source(league: League, season: int) -> str:
 
 @lru_cache(maxsize=8)
 def _sidelined(league: League, target_season: int,
-               live: bool | None = None) -> dict[str, list[dict]]:
+               live: bool | None = None,
+               apply_injuries: bool = True) -> dict[str, list[dict]]:
     """Per team, the rotation players ruled out of `target_season`'s next game.
 
     These are exactly the players `_rotations` drops: on the roster, inside the
@@ -628,27 +629,37 @@ def _sidelined(league: League, target_season: int,
     minutes are already shared among the team-mates who are projected, so the
     list is what explains a line that looks too generous.
     """
-    return _rotations_and_out(league, target_season, live)[1]
+    return _rotations_and_out(league, target_season, live, apply_injuries)[1]
 
 
 @lru_cache(maxsize=8)
 def _rotations(league: League, target_season: int,
-               live: bool | None = None) -> dict[str, list[dict]]:
+               live: bool | None = None,
+               apply_injuries: bool = True) -> dict[str, list[dict]]:
     """Each team's rotation for `target_season`, every player projected.
 
     The roster is whoever finished the previous season on the team, ordered by
     minutes — the schedule carries no roster, and trades and signings made
     after that season are not in the data.
     """
-    return _rotations_and_out(league, target_season, live)[0]
+    return _rotations_and_out(league, target_season, live, apply_injuries)[0]
 
 
 @lru_cache(maxsize=8)
 def _rotations_and_out(
-    league: League, target_season: int, live: bool | None = None
+    league: League, target_season: int, live: bool | None = None,
+    apply_injuries: bool = True,
 ) -> tuple[dict[str, list[dict]], dict[str, list[dict]]]:
     """(who is projected, who is ruled out), per team. One pass, because the
-    second list is the offcut of building the first."""
+    second list is the offcut of building the first.
+
+    `apply_injuries` is what separates a forecast from a measurement. Tonight's
+    game wants the current report: a player ruled out should get no line and
+    their minutes should go to team-mates. A backtest of games already played
+    must not see it — the report describes today, there is no archive of what
+    it said on any past night, and letting it through means a rotation from two
+    seasons ago is missing whoever happens to be hurt this morning.
+    """
     hist = _player_history(league)
     # A season with games already played is the best description of who is
     # playing and how well; only fall back to earlier seasons before tip-off.
@@ -669,7 +680,7 @@ def _rotations_and_out(
     # Where the player actually is *now*. Falls back to last season's team when
     # no roster has been published for the target season yet.
     signed = _roster_teams(league, target_season)
-    injury_index = _injury_index(league)
+    injury_index = _injury_index(league) if apply_injuries else {}
 
     out: dict[str, list[dict]] = {}
     sidelined: dict[str, list[dict]] = {}
@@ -818,7 +829,7 @@ def _scaled(value: float | None, factor: float) -> float | None:
 
 
 def game_player_lines(league: League, home: str, away: str, season: int,
-                      top: int = ROTATION_SIZE, live: bool | None = None) -> dict:
+                      top: int | None = None, live: bool | None = None) -> dict:
     """Projected per-game lines for both rotations in one scheduled game.
 
     `live` is only for the backtest, which forces the pre-season view of a
@@ -831,7 +842,8 @@ def game_player_lines(league: League, home: str, away: str, season: int,
 
 def _sides(league: League, rotations: dict[str, list[dict]],
            sidelined: dict[str, list[dict]],
-           defense: dict[str, float], home: str, away: str, top: int) -> dict:
+           defense: dict[str, float], home: str, away: str,
+           top: int | None) -> dict:
     """Apply the per-game adjustments to both rotations. The one path the app
     and the backtest share, so what is scored is what is shown."""
     out: dict[str, list[dict]] = {}
@@ -845,7 +857,10 @@ def _sides(league: League, rotations: dict[str, list[dict]],
         # the venue, and less than scoring does.
         other = 1.0 + (opp_factor - 1.0) / 2
         rows = []
-        for player in rotations.get(league.canonical_team(team), [])[:top]:
+        squad = rotations.get(league.canonical_team(team), [])
+        # The minutes were already shared across the whole squad, so cutting
+        # the list only hides rows — it does not change the ones above it.
+        for player in (squad[:top] if top else squad):
             proj = player["projected"]
             rows.append({
                 **{k: player[k] for k in
@@ -929,7 +944,7 @@ def game_line_backtest(league: League = DEFAULT, metric: str = "pts",
              if pd.notna(v)}
     hindsight = box.groupby(box["player_id"].astype(int))[column].mean().to_dict()
 
-    rotations = _rotations(league, season, live=False)
+    rotations = _rotations(league, season, live=False, apply_injuries=False)
     defense = _defense_factors(league, season)
     # The same projection before it was fitted to a game, to show what the fit
     # is worth on its own.
